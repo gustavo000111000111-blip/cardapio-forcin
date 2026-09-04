@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel Admin - Forcin Pizzaria</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f8; margin: 0; padding: 20px; }
+        .container { max-width: 1100px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); }
+        .login-box { max-width: 380px; margin: 80px auto; background: #fff; padding: 30px; border-radius: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); text-align: center; }
+        .login-box input { width: 100%; padding: 12px; margin: 15px 0; border: 1px solid #ccc; border-radius: 4px; font-size: 1.1em; text-align: center; }
+        .header-admin { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #eee; padding-bottom: 10px; margin-bottom: 20px; }
+        .nav-tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #eee; }
+        .nav-tab { padding: 10px 20px; cursor: pointer; border: none; background: none; font-weight: bold; font-size: 15px; color: #666; }
+        .nav-tab.active { border-bottom: 3px solid #c0392b; color: #c0392b; }
+        .form-card { background: #f8f9fa; border: 1px solid #e9ecef; padding: 20px; border-radius: 6px; margin-bottom: 25px; }
+        .form-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-bottom: 15px; }
+        .form-group { display: flex; flex-direction: column; gap: 5px; }
+        .form-group label { font-size: 12px; font-weight: bold; color: #495057; }
+        .form-group input { padding: 8px 10px; border: 1px solid #ced4da; border-radius: 4px; font-size: 14px; }
+        .btn { padding: 10px 18px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
+        .btn-primary { background: #27ae60; color: white; }
+        .btn-danger { background: #e74c3c; color: white; }
+        .btn-secondary { background: #7f8c8d; color: white; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border-bottom: 1px solid #eee; padding: 10px; text-align: left; font-size: 14px; }
+        th { background: #f1f3f5; color: #495057; }
+        .acoes { display: flex; gap: 6px; }
+    </style>
+</head>
+<body>
+
+    <!-- TELA DE LOGIN -->
+    <div id="telaLogin" class="login-box">
+        <h2>🔒 Acesso Restrito</h2>
+        <p>Informe a senha do administrador</p>
+        <input type="password" id="senhaAdmin" placeholder="Senha" onkeypress="if(event.key === 'Enter') fazerLogin()">
+        <button class="btn btn-primary" style="width:100%;" onclick="fazerLogin()">Entrar</button>
+    </div>
+
+    <!-- PAINEL ADMINISTRATIVO -->
+    <div id="painelAdmin" class="container" style="display:none;">
+        <div class="header-admin">
+            <h2>⚙️ Painel Administrativo - Forcin Pizzaria</h2>
+            <button class="btn btn-secondary" onclick="logout()">Sair</button>
+        </div>
+
+        <div class="form-card">
+            <h3>Adicionar / Editar Produto</h3>
+            <input type="hidden" id="prodId">
+            <div class="form-grid">
+    <div class="form-group">
+        <label>Categoria</label>
+        <select id="prodCategoria" style="padding:8px; border:1px solid #ced4da; border-radius:4px;">
+            <option value="pizza">Pizza</option>
+            <option value="promocao">Promoção</option>
+            <option value="bebida">Bebida</option>
+        </select>
+    </div>
+    <div class="form-group">
+        <label>Subcategoria</label>
+        <input type="text" id="prodSubcategoria" placeholder="tradicional, especial">
+    </div>
+    <div class="form-group">
+        <label>Nome</label>
+        <input type="text" id="prodNome" placeholder="Nome do produto">
+    </div>
+    <div class="form-group">
+        <label>Descrição</label>
+        <input type="text" id="prodDesc" placeholder="Ingredientes / Descrição">
+    </div>
+    
+    <!-- Campos de Preço -->
+    <div class="form-group"><label>Broto</label><input type="number" step="0.01" id="prodBroto" value="0"></div>
+    <div class="form-group"><label>Média</label><input type="number" step="0.01" id="prodMedia" value="0"></div>
+    <div class="form-group"><label>Grande</label><input type="number" step="0.01" id="prodGrande" value="0"></div>
+    <div class="form-group"><label>Família</label><input type="number" step="0.01" id="prodFamilia" value="0"></div>
+    <div class="form-group"><label>Ituana</label><input type="number" step="0.01" id="prodItuana" value="0"></div>
+    <div class="form-group" style="background: #e3f2fd; padding: 5px; border-radius: 4px;">
+        <label style="color:#0277bd;">Preço Único (Bebidas/Promos)</label>
+        <input type="number" step="0.01" id="prodUnico" value="0">
+    </div>
+</div>
+            <button class="btn btn-primary" onclick="salvarProduto()">Salvar Produto</button>
+            <button class="btn btn-secondary" onclick="limparFormulario()">Limpar</button>
+        </div>
+
+        <h3>Lista de Produtos</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Cat.</th>
+                    <th>Nome</th>
+                    <th>Grande (R$)</th>
+                    <th>Ações</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaProdutos">
+                <!-- Preenchido via JS -->
+            </tbody>
+        </table>
+    </div>
+
+    <script>
+    let senhaSalva = '';
+
+    async function fazerLogin() {
+        const senha = document.getElementById('senhaAdmin').value;
+        try {
+            const res = await fetch('/api/admin/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ senha })
+            });
+            const data = await res.json();
+            if (data.sucesso) {
+                senhaSalva = senha;
+                document.getElementById('telaLogin').style.display = 'none';
+                document.getElementById('painelAdmin').style.display = 'block';
+                carregarProdutosAdmin();
+            } else {
+                alert('Senha incorreta!');
+            }
+        } catch (e) {
+            alert('Erro ao conectar com o servidor.');
+        }
+    }
+
+    function logout() {
+        senhaSalva = '';
+        document.getElementById('senhaAdmin').value = '';
+        document.getElementById('painelAdmin').style.display = 'none';
+        document.getElementById('telaLogin').style.display = 'block';
+    }
+
+    async function carregarProdutosAdmin() {
+        try {
+            const res = await fetch('/api/produtos');
+            const produtos = await res.json();
+            const tbody = document.getElementById('tabelaProdutos');
+            tbody.innerHTML = produtos.map(p => `
+                <tr>
+                    <td>${p.id}</td>
+                    <td>${p.categoria} / ${p.subcategoria || '-'}</td>
+                    <td><strong>${p.nome}</strong><br><small>${p.descricao || ''}</small></td>
+                    <td>R$ ${(p.preco_grande || p.preco_unico || 0).toFixed(2).replace('.', ',')}</td>
+                    <td>
+                        <div class="acoes">
+                            <button class="btn btn-primary" style="padding:5px 10px; font-size:12px;" onclick="editarProduto(${p.id})">Editar</button>
+                            <button class="btn btn-danger" style="padding:5px 10px; font-size:12px;" onclick="excluirProduto(${p.id})">Excluir</button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+        } catch (e) {
+            console.error('Erro ao carregar produtos:', e);
+        }
+    }
+
+    async function salvarProduto() {
+    const id = document.getElementById('prodId').value;
+    const produto = {
+        categoria: document.getElementById('prodCategoria').value,
+        subcategoria: document.getElementById('prodSubcategoria').value,
+        nome: document.getElementById('prodNome').value,
+        descricao: document.getElementById('prodDesc').value,
+        preco_broto: parseFloat(document.getElementById('prodBroto').value) || 0,
+        preco_media: parseFloat(document.getElementById('prodMedia').value) || 0,
+        preco_grande: parseFloat(document.getElementById('prodGrande').value) || 0,
+        preco_familia: parseFloat(document.getElementById('prodFamilia').value) || 0,
+        preco_ituana: parseFloat(document.getElementById('prodItuana').value) || 0,
+        preco_unico: parseFloat(document.getElementById('prodUnico').value) || 0
+    };
+
+    const url = id ? `/api/produtos/${id}` : '/api/produtos';
+    const method = id ? 'PUT' : 'POST';
+
+    try {
+        const res = await fetch(url, {
+            method: method,
+            headers: {
+                'Content-Type': 'application/json',
+                'x-admin-password': senhaSalva
+            },
+            body: JSON.stringify(produto)
+        });
+        if (res.ok) {
+            alert('Produto salvo com sucesso!');
+            limparFormulario();
+            carregarProdutosAdmin();
+        } else {
+            alert('Erro ao salvar produto.');
+        }
+    } catch (e) {
+        console.error('Erro:', e);
+    }
+}
+
+   async function editarProduto(id) {
+    try {
+        const res = await fetch('/api/produtos');
+        const produtos = await res.json();
+        const p = produtos.find(item => item.id === id);
+        if (!p) return;
+
+        document.getElementById('prodId').value = p.id;
+        document.getElementById('prodCategoria').value = p.categoria || 'pizza';
+        document.getElementById('prodSubcategoria').value = p.subcategoria || '';
+        document.getElementById('prodNome').value = p.nome || '';
+        document.getElementById('prodDesc').value = p.descricao || '';
+        document.getElementById('prodBroto').value = p.preco_broto || 0;
+        document.getElementById('prodMedia').value = p.preco_media || 0;
+        document.getElementById('prodGrande').value = p.preco_grande || 0;
+        document.getElementById('prodFamilia').value = p.preco_familia || 0;
+        document.getElementById('prodItuana').value = p.preco_ituana || 0;
+        document.getElementById('prodUnico').value = p.preco_unico || 0;
+    } catch (e) {
+        console.error('Erro ao buscar produto:', e);
+    }
+}
+
+    async function excluirProduto(id) {
+        if (!confirm('Deseja realmente excluir este produto?')) return;
+        try {
+            const res = await fetch(`/api/produtos/${id}`, {
+                method: 'DELETE',
+                headers: { 'x-admin-password': senhaSalva }
+            });
+            if (res.ok) {
+                carregarProdutosAdmin();
+            } else {
+                alert('Erro ao excluir.');
+            }
+        } catch (e) {
+            console.error('Erro:', e);
+        }
+    }
+
+   function limparFormulario() {
+    document.getElementById('prodId').value = '';
+    document.getElementById('prodCategoria').value = 'pizza';
+    document.getElementById('prodSubcategoria').value = '';
+    document.getElementById('prodNome').value = '';
+    document.getElementById('prodDesc').value = '';
+    document.getElementById('prodBroto').value = '0';
+    document.getElementById('prodMedia').value = '0';
+    document.getElementById('prodGrande').value = '0';
+    document.getElementById('prodFamilia').value = '0';
+    document.getElementById('prodItuana').value = '0';
+    document.getElementById('prodUnico').value = '0';
+}
+    </script>
+</body>
+</html>

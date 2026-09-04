@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Comandas - Forcin Pizzaria</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f8; margin: 0; padding: 20px; }
+        h1 { text-align: center; color: #333; margin-bottom: 20px; }
+        
+        .grid-comandas { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
+        .card-comanda { 
+            background: #fff; 
+            border-top: 5px solid #e74c3c; 
+            border-radius: 8px; 
+            width: 380px; 
+            padding: 15px; 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
+            display: flex; 
+            flex-direction: column; 
+            gap: 15px;
+        }
+
+        /* Estilo da Via Cozinha */
+        .via-cozinha { 
+            background: #fff9f9; 
+            border: 1px dashed #e74c3c; 
+            padding: 10px; 
+            border-radius: 6px; 
+        }
+        .via-cozinha h3 { margin: 0 0 8px 0; color: #c0392b; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; }
+        
+        /* Estilo da Via Motoboy */
+        .via-motoboy { 
+            background: #f0f7fb; 
+            border: 1px solid #3498db; 
+            padding: 10px; 
+            border-radius: 6px; 
+        }
+        .via-motoboy h3 { margin: 0 0 8px 0; color: #2980b9; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; }
+
+        .data { color: #7f8c8d; font-size: 0.8em; font-weight: normal; }
+        
+        .item-box { margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px dotted #ddd; }
+        .item-titulo { font-weight: bold; color: #2c3e50; font-size: 1.05em; }
+        .item-sub { font-size: 0.9em; color: #c0392b; font-weight: 500; padding-left: 10px; }
+        .item-obs { font-size: 0.85em; color: #d35400; font-style: italic; padding-left: 10px; }
+
+        .endereco-box { background: #fff; padding: 8px; border-radius: 4px; margin: 6px 0; border: 1px solid #dcdde1; }
+        .endereco-texto { font-size: 1.15em; font-weight: bold; color: #2c3e50; margin-top: 2px; }
+
+        .total { font-weight: bold; font-size: 1.1em; color: #27ae60; }
+        
+        .btn-imprimir-cozinha { background: #e67e22; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 8px; }
+        .btn-imprimir-cozinha:hover { background: #d35400; }
+
+        .btn-imprimir-moto { background: #3498db; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 8px; }
+        .btn-imprimir-moto:hover { background: #2980b9; }
+
+        /* REGRA DE IMPRESSÃO */
+        @media print {
+            body > *:not(#print-area) {
+                display: none !important;
+            }
+            #print-area {
+                display: block !important;
+                width: 100%;
+                margin: 0;
+                padding: 0;
+            }
+            button { display: none !important; }
+        }
+    </style>
+</head>
+<body>
+
+    <h1>🍕 Painel de Comandas - Cozinha & Entregas</h1>
+    <div id="gridComandas" class="grid-comandas">
+        <p>Carregando comandas...</p>
+    </div>
+
+    <script>
+    async function carregarComandas() {
+        try {
+            const resposta = await fetch('/api/comandas');
+            const comandas = await resposta.json();
+            const container = document.getElementById('gridComandas');
+            
+            if (!comandas || comandas.length === 0) {
+                container.innerHTML = '<p>Nenhuma comanda recebida ainda.</p>';
+                return;
+            }
+            container.innerHTML = '';
+
+            comandas.forEach(comanda => {
+                const dataHora = new Date(comanda.data || comanda.timestamp).toLocaleString('pt-BR');
+                let itensHTML = '';
+                const itensArray = typeof comanda.itens === 'string' ? JSON.parse(comanda.itens) : comanda.itens;
+                
+                if (Array.isArray(itensArray)) {
+                    itensHTML = itensArray.map(item => `
+                        <div class="item-box">
+                            <div class="item-titulo">🍕 ${item.titulo || item.nome || 'Item'} x${item.quantidade || 1}</div>
+                            ${item.detalhes ? `<div class="item-sub">Tamanho/Ingredientes: ${item.detalhes}</div>` : ''}
+                            ${item.observacao ? `<div class="item-obs">Obs: ${item.observacao}</div>` : ''}
+                        </div>
+                    `).join('');
+                }
+
+                const card = document.createElement('div');
+                card.className = 'card-comanda';
+                card.id = `comanda-${comanda.id}`;
+                card.innerHTML = `
+                    <!-- VIA DA COZINHA -->
+                    <div class="via-cozinha" id="via-cozinha-${comanda.id}">
+                        <h3>
+                            <span>🍕 COZINHA #${comanda.id}</span>
+                            <span class="data">${dataHora}</span>
+                        </h3>
+                        <div class="itens-lista">${itensHTML}</div>
+                        <button class="btn-imprimir-cozinha" onclick="imprimirVia('${comanda.id}', 'cozinha')">🖨️ Imprimir Via Cozinha</button>
+                    </div>
+
+                    <!-- VIA DO MOTOBOY -->
+                    <div class="via-motoboy" id="via-moto-${comanda.id}">
+                        <h3>
+                            <span>🛵 MOTOBOY #${comanda.id}</span>
+                            <span class="data">${dataHora}</span>
+                        </h3>
+                        <div style="font-size: 1.05em; margin-bottom: 4px;"><strong>Cliente:</strong> ${comanda.cliente}</div>
+                        <div style="font-size: 0.95em; margin-bottom: 4px;"><strong>Telefone:</strong> ${comanda.telefone || 'Não informado'}</div>
+                        
+                        <div class="endereco-box">
+                            <div style="font-size: 0.8em; color: #e74c3c; font-weight: bold;">ENDEREÇO DE ENTREGA:</div>
+                            <div class="endereco-texto">📍 ${comanda.endereco || 'Retirada no Balcão'}</div>
+                        </div>
+
+                        <!-- LISTA DE ITENS PARA O MOTOBOY CONFERIR COM O CLIENTE -->
+                        <div style="margin: 8px 0; background: #fff; padding: 8px; border-radius: 4px; border: 1px solid #dcdde1;">
+                            <div style="font-size: 0.85em; font-weight: bold; color: #2980b9; margin-bottom: 6px; border-bottom: 1px solid #eee; padding-bottom: 2px;">📦 ITENS PARA CONFERÊNCIA:</div>
+                            <div class="itens-lista">${itensHTML}</div>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
+                            <span class="total">Total: R$ ${Number(comanda.total).toFixed(2).replace('.', ',')}</span>
+                        </div>
+                        <button class="btn-imprimir-moto" onclick="imprimirVia('${comanda.id}', 'motoboy')">🖨️ Imprimir Via Motoboy</button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        } catch (erro) {
+            console.error('Erro ao buscar comandas:', erro);
+        }
+    }
+
+    function imprimirVia(id, tipo) {
+        const elementoAlvo = document.getElementById(tipo === 'cozinha' ? `via-cozinha-${id}` : `via-moto-${id}`);
+        if (!elementoAlvo) return;
+
+        const printArea = document.createElement('div');
+        printArea.id = 'print-area';
+        printArea.style.padding = '10px';
+        printArea.style.background = '#fff';
+        
+        const clone = elementoAlvo.cloneNode(true);
+        const botao = clone.querySelector('button');
+        if (botao) botao.remove();
+        
+        printArea.appendChild(clone);
+        document.body.appendChild(printArea);
+
+        window.print();
+
+        setTimeout(() => {
+            printArea.remove();
+        }, 500);
+    }
+
+    carregarComandas();
+    setInterval(carregarComandas, 10000);
+    </script>
+</body>
+</html>

@@ -1,0 +1,264 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistema de Delivery | Pizzaria</title>
+    <style>
+        :root {
+            --primary: #0e790a;
+            --bg: #f8f9fa;
+            --text: #333;
+            --card-bg: #fff;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: var(--bg); color: var(--text); padding-bottom: 80px; }
+
+        header { background-color: var(--primary); color: white; padding: 15px 20px; text-align: center; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
+        header h1 { font-size: 20px; }
+
+        .banner { background-color: #333; color: white; padding: 30px 20px; text-align: center; background-image: linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.6)), url('https://images.unsplash.com/photo-1513104890138-7c749659a591?w=800'); background-size: cover; background-position: center; }
+
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .section-title { margin-bottom: 15px; border-bottom: 2px solid var(--primary); display: inline-block; padding-bottom: 5px; }
+
+        .produto { background: var(--card-bg); border-radius: 10px; padding: 15px; margin-bottom: 15px; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .produto-info h3 { font-size: 16px; margin-bottom: 5px; }
+        .produto-info p { font-size: 13px; color: #666; margin-bottom: 10px; }
+        .produto-preco { font-weight: bold; color: var(--primary); font-size: 16px; }
+        .btn-add { background: var(--primary); color: white; border: none; padding: 8px 15px; border-radius: 5px; cursor: pointer; font-weight: bold; }
+
+        .cart-float { position: fixed; bottom: 0; left: 0; width: 100%; background: var(--card-bg); padding: 15px 20px; box-shadow: 0 -2px 10px rgba(0,0,0,0.1); display: flex; justify-content: space-between; align-items: center; cursor: pointer; z-index: 101;}
+        .cart-info { font-weight: bold; }
+        .btn-checkout { background: #4CAF50; color: white; padding: 10px 20px; border-radius: 5px; font-weight: bold; text-transform: uppercase; border: none; cursor: pointer;}
+
+        .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 200; overflow-y: auto;}
+        .modal-content { background: white; max-width: 500px; margin: 20px auto; padding: 20px; border-radius: 10px; min-height: 90vh; position: relative;}
+        .close-modal { position: absolute; top: 15px; right: 15px; font-size: 24px; cursor: pointer; color: #333;}
+
+        .form-group { margin-bottom: 15px; }
+        .form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 14px;}
+        .form-group input, .form-group select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; }
+
+        .comanda-print { background: #FFFFF0; color: #000; font-family: 'Courier New', Courier, monospace; padding: 20px; border: 1px dashed #000; margin-top: 20px; width: 300px; margin: 0 auto; }
+        .comanda-print h2 { text-align: center; margin-bottom: 10px; font-size: 18px; border-bottom: 1px dashed #000; padding-bottom: 10px;}
+        .comanda-print .linha { display: flex; justify-content: space-between; margin-bottom: 5px; font-size: 14px;}
+        .comanda-print .divisor { border-bottom: 1px dashed #000; margin: 10px 0; }
+
+        .dev-badge { text-align: center; font-size: 12px; margin-top: 30px; color: #888; }
+        .dev-badge span { color: var(--primary); font-weight: bold; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>🍕Pizzaria Forcin</h1>
+    </header>
+
+    <div class="banner">
+        <h2>Cardápio Digital</h2>
+        <p>Peça rápido, pague online e receba quentinho.</p>
+    </div>
+
+    <div class="container">
+        <h2 class="section-title">Pizzas Mais Pedidas</h2>
+
+        <div class="produto">
+            <div class="produto-info">
+                <h3>Pizza Calabresa Especial (Grande)</h3>
+                <p>Calabresa fatiada, cebola, queijo mussarela e azeitonas.</p>
+                <div class="produto-preco">R$ 55,00</div>
+            </div>
+            <button class="btn-add" onclick="addAoCarrinho('Pizza Calabresa', 55.00)">+ ADD</button>
+        </div>
+
+        <div class="produto">
+            <div class="produto-info">
+                <h3>Pizza Marguerita (Grande)</h3>
+                <p>Mussarela, tomate em rodelas, manjericão fresco.</p>
+                <div class="produto-preco">R$ 50,00</div>
+            </div>
+            <button class="btn-add" onclick="addAoCarrinho('Pizza Marguerita', 50.00)">+ ADD</button>
+        </div>
+
+        <div class="produto">
+            <div class="produto-info">
+                <h3>Coca-Cola 2 Litros</h3>
+                <p>Refrigerante pet 2L bem gelado.</p>
+                <div class="produto-preco">R$ 14,00</div>
+            </div>
+            <button class="btn-add" onclick="addAoCarrinho('Coca-Cola 2L', 14.00)">+ ADD</button>
+        </div>
+
+        <div class="dev-badge">Sistema de Delivery gerado por <span>DevBleed</span></div>
+    </div>
+
+    <div class="cart-float" id="cartFloat" style="display: none;" onclick="abrirCheckout()">
+        <div class="cart-info">
+            🛍️ <span id="qtdItens">0</span> itens<br>
+            Total: <span style="color: var(--primary);">R$ <span id="totalCarrinho">0,00</span></span>
+        </div>
+        <button class="btn-checkout">Ver Sacola</button>
+    </div>
+
+    <div class="modal" id="modalCheckout">
+        <div class="modal-content">
+            <span class="close-modal" onclick="fecharModal('modalCheckout')">&times;</span>
+            <h2 style="margin-bottom: 20px; border-bottom: 2px solid var(--primary); padding-bottom: 10px;">Finalizar Pedido</h2>
+
+            <div id="listaSacola" style="margin-bottom: 20px;"></div>
+
+            <h3>Dados de Entrega</h3><br>
+            <div class="form-group">
+                <label>Nome Completo</label>
+                <input type="text" id="cliNome" placeholder="Ex: João Silva">
+            </div>
+            <div class="form-group">
+                <label>Endereço e Número</label>
+                <input type="text" id="cliEndereco" placeholder="Ex: Rua das Flores, 123">
+            </div>
+
+            <div class="form-group">
+                <label>Forma de Pagamento Integrada</label>
+                <select id="cliPagamento">
+                    <option value="MercadoPago">Pagar Online (Pix / Cartão de Crédito)</option>
+                </select>
+            </div>
+
+            <button class="btn-checkout" id="btnFinalizarPedido" style="width: 100%; padding: 15px;" onclick="pagarComMercadoPago()">💳 Pagar com Mercado Pago</button>
+        </div>
+    </div>
+
+    <div class="modal" id="modalComanda">
+        <div class="modal-content" style="background: #e0e0e0; display: flex; flex-direction: column; align-items: center; justify-content: center;">
+            <span class="close-modal" onclick="fecharModal('modalComanda')">&times;</span>
+            <h2 style="color: #4CAF50; margin-bottom: 10px;">✅ Pagamento Aprovado!</h2>
+            <p style="text-align: center; margin-bottom: 20px; font-size: 14px;">Abaixo é uma simulação de como o pedido será impresso na cozinha da pizzaria instantaneamente:</p>
+
+            <div class="comanda-print">
+                <h2>🍕 PIZZARIA FORCIN 🍕</h2>
+                <div class="linha"><span>Data:</span><span id="printData"></span></div>
+                <div class="linha"><span>TIPO:</span><strong>DELIVERY</strong></div>
+                <div class="divisor"></div>
+
+                <div style="margin-bottom: 10px;">
+                    <strong>CLIENTE:</strong> <span id="printNome"></span><br>
+                    <strong>END:</strong> <span id="printEnd"></span>
+                </div>
+
+                <div class="divisor"></div>
+                <strong>ITENS DO PEDIDO:</strong><br><br>
+                <div id="printItens"></div>
+
+                <div class="divisor"></div>
+                <div class="linha"><span>TOTAL:</span><strong>R$ <span id="printTotal"></span></strong></div>
+                <div class="linha"><span>PAGO VIA:</span><span id="printPgto"></span></div>
+                <div class="divisor"></div>
+                <div style="text-align: center; font-size: 12px; margin-top: 10px;">Automação: DevBleed</div>
+            </div>
+
+            <button class="btn-checkout" style="width: 100%; margin-top: 30px;" onclick="location.reload()">Fazer Novo Teste</button>
+        </div>
+    </div>
+
+    <script>
+        let carrinho = [];
+        let total = 0;
+
+        function addAoCarrinho(nome, preco) {
+            carrinho.push({nome: nome, preco: preco});
+            total += preco;
+
+            document.getElementById('qtdItens').innerText = carrinho.length;
+            document.getElementById('totalCarrinho').innerText = total.toFixed(2).replace('.', ',');
+            document.getElementById('cartFloat').style.display = 'flex';
+
+            alert("✅ " + nome + " adicionado à sacola!");
+        }
+
+        function abrirCheckout() {
+            if (carrinho.length === 0) {
+                alert("Sua sacola está vazia!");
+                return;
+            }
+
+            let htmlLista = '';
+            carrinho.forEach(item => {
+                htmlLista += `<div style="display: flex; justify-content: space-between; border-bottom: 1px solid #eee; padding: 5px 0;">
+                    <span>1x ${item.nome}</span> <span>R$ ${item.preco.toFixed(2).replace('.', ',')}</span>
+                </div>`;
+            });
+            document.getElementById('listaSacola').innerHTML = htmlLista;
+            document.getElementById('modalCheckout').style.display = 'block';
+        }
+
+        function fecharModal(id) {
+            document.getElementById(id).style.display = 'none';
+        }
+
+        function gerarComanda() {
+            let nome = document.getElementById('cliNome').value || 'Cliente Teste';
+            let end = document.getElementById('cliEndereco').value || 'Endereço não informado';
+            let pgto = document.getElementById('cliPagamento').value;
+
+            document.getElementById('printNome').innerText = nome.toUpperCase();
+            document.getElementById('printEnd').innerText = end.toUpperCase();
+            document.getElementById('printPgto').innerText = pgto;
+            document.getElementById('printTotal').innerText = total.toFixed(2).replace('.', ',');
+
+            let dataAtual = new Date();
+            document.getElementById('printData').innerText = dataAtual.toLocaleTimeString();
+
+            let htmlItensPrint = '';
+            carrinho.forEach(item => {
+                htmlItensPrint += `<div class="linha"><span>1x ${item.nome}</span><span>R$${item.preco.toFixed(2)}</span></div>`;
+            });
+            document.getElementById('printItens').innerHTML = htmlItensPrint;
+
+            fecharModal('modalCheckout');
+            document.getElementById('modalComanda').style.display = 'block';
+        }
+
+        async function pagarComMercadoPago() {
+            if (carrinho.length === 0) {
+                alert("Sua sacola está vazia!");
+                return;
+            }
+
+            const btn = document.getElementById('btnFinalizarPedido');
+            btn.innerText = "Processando Pagamento...";
+            btn.disabled = true;
+
+            try {
+                const itensFormatados = carrinho.map(item => ({
+                    title: item.nome,
+                    unit_price: Number(item.preco),
+                    quantity: 1,
+                    currency_id: "BRL"
+                }));
+
+                const response = await fetch('/api/pagar', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ itens: itensFormatados })
+                });
+
+                const data = await response.json();
+
+                if (data.url) {
+                    window.location.href = data.url;
+                } else {
+                    alert("Erro do Mercado Pago ao gerar link de checkout. Verifique suas credenciais na Vercel.");
+                    btn.innerText = "💳 Pagar com Mercado Pago";
+                    btn.disabled = false;
+                }
+            } catch (erro) {
+                alert("Erro crítico de conexão com o servidor.");
+                btn.innerText = "💳 Pagar com Mercado Pago";
+                btn.disabled = false;
+            }
+        }
+    </script>
+</body>
+</html>
