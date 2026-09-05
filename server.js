@@ -2,11 +2,6 @@ const dns = require('dns');
 dns.setDefaultResultOrder('ipv4first');
 
 const express = require('express');
-const { createClient } = require('@supabase/supabase-js');
-// ... restante do seu código
-const { createClient } = require('@supabase/supabase-js');
-const supabase = createClient('SUA_URL_SUPABASE', 'SUA_CHAVE_SUPABASE');
-const express = require('express');
 const path = require('path');
 const cors = require('cors');
 const { Pool } = require('pg'); // Substituindo sqlite3 pelo pg
