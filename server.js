@@ -46,7 +46,7 @@ async function criarTabelas() {
             preco_unico DOUBLE PRECISION
         )`);
 
-        // Garante que todas as colunas essenciais e de preços existam caso a tabela seja antiga
+        // Garante que as colunas novas existam caso a tabela seja antiga
         await pool.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS subcategoria VARCHAR(50)`);
         await pool.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS descricao TEXT`);
         await pool.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS preco_broto DOUBLE PRECISION`);
@@ -55,6 +55,9 @@ async function criarTabelas() {
         await pool.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS preco_familia DOUBLE PRECISION`);
         await pool.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS preco_ituana DOUBLE PRECISION`);
         await pool.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS preco_unico DOUBLE PRECISION`);
+
+        // Remove a exigência da coluna antiga "preco" se ela existir na tabela do banco
+        await pool.query(`ALTER TABLE produtos ALTER COLUMN preco DROP NOT NULL`).catch(() => {});
 
         // Tabela de Comandas (expira em 1h30)
         await pool.query(`CREATE TABLE IF NOT EXISTS comandas (
@@ -72,7 +75,6 @@ async function criarTabelas() {
         console.error('Erro ao criar tabelas:', err.message);
     }
 }
-
 async function popularProdutosIniciais() {
     try {
         const { rows } = await pool.query("SELECT COUNT(*) as total FROM produtos");
