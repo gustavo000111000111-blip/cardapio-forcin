@@ -395,20 +395,6 @@ app.post('/api/produtos', async (req, res) => {
     }
 
     return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});vvvvvvvvvvvvv// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
 });// Exemplo de rota POST para salvar um produto/item
 app.post('/api/produtos', async (req, res) => {
     const { nome, preco, imgs, tamanhos } = req.body;
@@ -451,7 +437,21 @@ app.post('/api/produtos', async (req, res) => {
     }
 
     return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});vvvvv// Exemplo de rota POST para salvar um produto/item
+});// Exemplo de rota POST para salvar um produto/item
+app.post('/api/produtos', async (req, res) => {
+    const { nome, preco, imgs, tamanhos } = req.body;
+
+    // Salva de verdade no Supabase (persistente)
+    const { data, error } = await supabase
+        .from('produtos') // Nome da sua tabela no Supabase
+        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
+
+    if (error) {
+        return res.status(500).json({ erro: error.message });
+    }
+
+    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
+});// Exemplo de rota POST para salvar um produto/item
 app.post('/api/produtos', async (req, res) => {
     const { nome, preco, imgs, tamanhos } = req.body;
 
