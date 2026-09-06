@@ -46,8 +46,9 @@ async function criarTabelas() {
             preco_unico DOUBLE PRECISION
         )`);
 
-        // Garante que a coluna subcategoria existe caso a tabela seja antiga
+        // Garante que as colunas essenciais existem caso a tabela seja antiga
         await pool.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS subcategoria VARCHAR(50)`);
+        await pool.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS descricao TEXT`);
 
         // Tabela de Comandas (expira em 1h30)
         await pool.query(`CREATE TABLE IF NOT EXISTS comandas (
