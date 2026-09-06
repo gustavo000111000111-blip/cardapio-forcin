@@ -4,7 +4,7 @@ dns.setDefaultResultOrder('ipv4first');
 const express = require('express');
 const path = require('path');
 const cors = require('cors');
-const { Pool } = require('pg'); // Substituindo sqlite3 pelo pg
+const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -72,7 +72,7 @@ async function popularProdutosIniciais() {
         }
 
         console.log('Inserindo cardápio completo...');
-        await pool.query("TRUNCATE TABLE produtos RESTART IDENTITY");
+        await pool.query("TRUNCATE TABLE produtos RESTART IDENTITY CASCADE");
 
         const query = `INSERT INTO produtos (categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`;
 
@@ -82,7 +82,7 @@ async function popularProdutosIniciais() {
             }
         };
 
-        // Grupo 1: Tradicionais (R$ 33,00 / 42,00 / 60,00 / 80,00 / 117,00)
+        // Grupo 1: Tradicionais
         const itensG1 = [
             ['ALHO AO AZEITE', 'Mussarela, alho ao azeite, tomate e azeitona preta'],
             ['BACON', 'Mussarela, bacon, tomate e azeitona preta'],
@@ -105,7 +105,7 @@ async function popularProdutosIniciais() {
         ];
         await inserir('pizza', 'tradicional', itensG1, 33.0, 42.0, 60.0, 80.0, 117.0, 0);
 
-        // Grupo 2: Especiais (R$ 37,00 / 47,00 / 62,00 / 83,00 / 122,00)
+        // Grupo 2: Especiais
         const itensG2 = [
             ['ALIXE', 'Mussarela, alixe, tomate e azeitona preta'],
             ['ATUM', 'Mussarela, atum, cebola e azeitona preta'],
@@ -126,7 +126,7 @@ async function popularProdutosIniciais() {
         ];
         await inserir('pizza', 'especial', itensG2, 37.0, 47.0, 62.0, 83.0, 122.0, 0);
 
-        // Grupo 3: Especiais (R$ 39,00 / 51,00 / 66,00 / 87,00 / 125,00)
+        // Grupo 3: Especiais
         const itensG3 = [
             ['ALHO-PORÓ', 'Mussarela, alho-poró, palmito, bacon e azeitona preta'],
             ['ALPINA', 'Mussarela, atum, ovo, ervilha, cebola, maionese e azeitona preta'],
@@ -150,7 +150,7 @@ async function popularProdutosIniciais() {
         ];
         await inserir('pizza', 'especial', itensG3, 39.0, 51.0, 66.0, 87.0, 125.0, 0);
 
-        // Grupo 4: Especiais (R$ 40,00 / 52,00 / 68,00 / 89,00 / 132,00)
+        // Grupo 4: Especiais
         const itensG4 = [
             ['À MODA DA CASA', 'Mussarela, presunto, calabresa, ovo, palmito, ervilha, cebola, tomate, azeitona preta e verde'],
             ['CATUPIRY À MODA DA CASA', 'Catupiry (Requeijão especial), presunto, calabresa, ovo, palmito, ervilha, cebola, tomate, azeitona preta e verde'],
@@ -175,14 +175,14 @@ async function popularProdutosIniciais() {
         ];
         await inserir('pizza', 'especial', itensG4, 40.0, 52.0, 68.0, 89.0, 132.0, 0);
 
-        // Grupo 5: Especiais (R$ 42,00 / 54,00 / 72,00 / 91,00 / 137,00)
+        // Grupo 5: Especiais
         const itensG5 = [
             ['CINCO QUEIJOS', 'Catupiry (Requeijão especial), mussarela, provolone, gorgonzola parmesão e azeitona preta'],
             ['SÓ FRIOS', 'Mussarela, calabresa, presunto, bacon, salame italiano, lombo, peito de peru e azeitona preta']
         ];
         await inserir('pizza', 'especial', itensG5, 42.0, 54.0, 72.0, 91.0, 137.0, 0);
 
-        // Grupo Promoção (R$ 45,00 e R$ 52,00 Grande)
+        // Grupo Promoção
         const promoG1 = [
             ['CALABRESA', 'Catupiry (Requeijão especial) OU Mussarela, calabresa, cebola e azeitona'],
             ['MILHO', 'Catupiry (Requeijão especial), milho, tomate e azeitona'],
@@ -230,326 +230,23 @@ setInterval(async () => {
 // --- ROTAS DA API ---
 
 app.get('/api/produtos', async (req, res) => {
-    const { data, error } = await supabase
-        .from('produtos')
-        .select('*');
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
+    try {
+        const { rows } = await pool.query('SELECT * FROM produtos');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ erro: err.message });
     }
-
-    return res.json(data);
 });
 
-// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
+app.post('/api/produtos', verificarAdmin, async (req, res) => {
+    const { categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico } = req.body;
+    const query = `INSERT INTO produtos (categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`;
+    try {
+        const { rows } = await pool.query(query, [categoria, subcategoria, nome, descricao, preco_broto || 0, preco_media || 0, preco_grande || 0, preco_familia || 0, preco_ituana || 0, preco_unico || 0]);
+        res.status(200).json({ mensagem: 'Salvo com sucesso!', id: rows[0].id });
+    } catch (err) {
+        res.status(500).json({ erro: err.message });
     }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});// Exemplo de rota POST para salvar um produto/item
-// Exemplo de rota POST para salvar um produto/item
-app.post('/api/produtos', async (req, res) => {
-    const { nome, preco, imgs, tamanhos } = req.body;
-
-    // Salva de verdade no Supabase (persistente)
-    const { data, error } = await supabase
-        .from('produtos') // Nome da sua tabela no Supabase
-        .insert([{ name: nome, preco: preco, imgs: imgs, tamanhos: tamanhos }]);
-
-    if (error) {
-        return res.status(500).json({ erro: error.message });
-    }
-
-    return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
 });
 
 app.put('/api/produtos/:id', verificarAdmin, async (req, res) => {
@@ -582,7 +279,7 @@ app.get('/api/comandas', async (req, res) => {
         const formatadas = rows.map(c => ({
             ...c,
             itens: JSON.parse(c.itens || '[]'),
-            data: parseInt(c.timestamp) // Converte bigint para numérico seguro
+            data: parseInt(c.timestamp)
         }));
         res.json(formatadas);
     } catch (err) {
