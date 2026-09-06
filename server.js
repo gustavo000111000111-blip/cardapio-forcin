@@ -255,7 +255,7 @@ app.post('/api/produtos', async (req, res) => {
     }
 
     return res.status(200).json({ mensagem: 'Salvo com sucesso!', data });
-});vvvv// Exemplo de rota POST para salvar um produto/item
+});// Exemplo de rota POST para salvar um produto/item
 app.post('/api/produtos', async (req, res) => {
     const { nome, preco, imgs, tamanhos } = req.body;
 
