@@ -196,12 +196,12 @@ async function popularProdutosIniciais() {
 
         // Grupo Promoção
         const promoG1 = [
-            ['CALABRESA', 'Catupiry (Requeijão especial) OU Mussarela, calabresa, cebola e azeitona'],
+            ['CALABRESA', 'Mussarela, calabresa, cebola e azeitona'],
             ['MILHO', 'Catupiry (Requeijão especial), milho, tomate e azeitona'],
             ['PALMITO', 'Catupiry (Requeijão especial), palmito, tomate e azeitona'],
             ['DOIS QUEIJOS', 'Catupiry (Requeijão especial), mussarela e azeitona'],
             ['FRANGO', 'Catupiry (Requeijão especial), frango, tomate e azeitona'],
-            ['BAURU', 'Catupiry (Requeijão especial) OU Mussarela, presunto, tomate e azeitona'],
+            ['BAURU', 'Mussarela, presunto, tomate e azeitona'],
             ['PORTUGUESINHA', 'Mussarela, presunto, ervilha, ovo, cebola e azeitona'],
             ['BRASILEIRINHA', 'Mussarela, milho, ervilha, ovo, cebola e azeitona'],
             ['MANJERICÃO', 'Mussarela, manjericão, tomate e azeitona'],
