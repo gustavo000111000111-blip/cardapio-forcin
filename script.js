@@ -1,4 +1,3 @@
-
 // --- CONFIGURAÇÕES DE TAMANHOS ---
 const TAMANHOS = [
     { id: 'broto', nome: 'Broto (25cm - 4 fatias)', maxSabores: 2 },
@@ -103,39 +102,7 @@ async function carregarCardapioDoBanco() {
                 });
             }
 
-            // 3. Mantém o filtro de bebidas (basta adicionar produtos como "bebida" no painel admin)
-            const bebidasBanco = produtosBanco.filter(p => p.categoria === 'bebida');
-            if (bebidasBanco.length > 0) {
-                BEBIDAS = bebidasBanco.map(p => {
-                    const preco = p.preco_unico || p.preco_grande || 0;
-                    return {
-                        id: p.id,
-                        nome: p.nome,
-                        desc: p.descricao || '',
-                        precos: { broto: preco, media: preco, grande: preco, familia: preco, ituana: preco }
-                    };
-                });
-            }
-
-            renderizarDestaques();
-            renderizarCardapio(SABORES, 'cardapioContainer', 'montador');
-            renderizarCardapio(PROMOCOES, 'promocoesContainer', 'promo');
-            renderizarCardapio(BEBIDAS, 'bebidasContainer', 'bebida');
-        }
-
-            const promosBanco = produtosBanco.filter(p => p.categoria === 'promocao');
-            if (promosBanco.length > 0) {
-                PROMOCOES = promosBanco.map(p => {
-                    const preco = p.preco_unico || p.preco_grande || 0;
-                    return {
-                        id: p.id,
-                        nome: p.nome,
-                        desc: p.descricao || '',
-                        precos: { broto: preco, media: preco, grande: preco, familia: preco, ituana: preco }
-                    };
-                });
-            }
-
+            // 3. Mantém o filtro de bebidas
             const bebidasBanco = produtosBanco.filter(p => p.categoria === 'bebida');
             if (bebidasBanco.length > 0) {
                 BEBIDAS = bebidasBanco.map(p => {
