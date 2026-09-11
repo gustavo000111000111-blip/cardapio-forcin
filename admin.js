@@ -1,48 +1,31 @@
-const SENHA_ADMIN = '21072026'; // Senha idêntica à configurada no server.js
+const SENHA_ADMIN = '21072026'; // Senha configurada no server.js
 let todosProdutos = [];
 let idEditando = null;
 
+// Executa ao carregar a página
 document.addEventListener('DOMContentLoaded', () => {
-    verificarLogin();
+    carregarProdutos();
 });
 
-// ================= AUTENTICAÇÃO =================
-function verificarLogin() {
-    const senhaSalva = localStorage.getItem('admin_password');
-
-    if (senhaSalva === SENHA_ADMIN) {
-        carregarProdutos();
-    } else {
-        const senhaDigitada = prompt('Digite a senha do Painel Administrativo:');
-        if (senhaDigitada === SENHA_ADMIN) {
-            localStorage.setItem('admin_password', senhaDigitada);
-            carregarProdutos();
-        } else {
-            alert('Senha incorreta! Acesso negado.');
-            window.location.href = '/';
-        }
-    }
-}
-
 function sairPainel() {
-    localStorage.removeItem('admin_password');
     window.location.href = '/';
 }
 
-// ================= CARREGAR E EXIBIR PRODUTOS =================
+// 1. CARREGAR PRODUTOS DO BANCO DE DADOS
 async function carregarProdutos() {
     try {
         const resposta = await fetch('/api/produtos');
-        if (!resposta.ok) throw new Error('Erro ao buscar produtos');
+        if (!resposta.ok) throw new Error('Falha ao buscar produtos');
 
         todosProdutos = await resposta.json();
         renderizarTabela(todosProdutos);
     } catch (erro) {
         console.error('Erro ao carregar lista de produtos:', erro);
-        alert('Não foi possível carregar os itens do cardápio.');
+        alert('Não foi possível carregar a lista de produtos do servidor.');
     }
 }
 
+// 2. EXIBIR OS PRODUTOS NA TABELA HTML
 function renderizarTabela(lista) {
     const tabela = document.getElementById('tabelaProdutos');
     if (!tabela) return;
@@ -54,8 +37,8 @@ function renderizarTabela(lista) {
 
     tabela.innerHTML = lista.map(p => {
         const precoExibicao = p.preco_unico > 0 
-            ? `R$ ${p.preco_unico.toFixed(2)}` 
-            : `G: R$ ${(p.preco_grande || 0).toFixed(2)}`;
+            ? `R$ ${Number(p.preco_unico).toFixed(2)}` 
+            : `G: R$ ${Number(p.preco_grande || 0).toFixed(2)}`;
 
         return `
             <tr>
@@ -75,7 +58,7 @@ function renderizarTabela(lista) {
     }).join('');
 }
 
-// ================= FILTRO DE BUSCA =================
+// 3. BUSCAR / FILTRAR PRODUTOS
 function filtrarProdutos() {
     const termo = document.getElementById('inputBusca')?.value.toLowerCase() || '';
     const filtrados = todosProdutos.filter(p => 
@@ -85,14 +68,14 @@ function filtrarProdutos() {
     renderizarTabela(filtrados);
 }
 
-// ================= PREPARAR FORMULÁRIO DE EDIÇÃO =================
+// 4. PREENCHER O FORMULÁRIO COM OS DADOS DO ITEM PARA EDITAR
 function prepararEdicao(id) {
-    const produto = todosProdutos.find(p => p.id === id);
+    const produto = todosProdutos.find(p => Number(p.id) === Number(id));
     if (!produto) return;
 
     idEditando = id;
 
-    // Preenche os campos do formulário
+    // Preenche os inputs do formulário
     document.getElementById('pCategoria').value = produto.categoria || 'pizza';
     document.getElementById('pSubcategoria').value = produto.subcategoria || 'tradicional';
     document.getElementById('pNome').value = produto.nome || '';
@@ -105,50 +88,49 @@ function prepararEdicao(id) {
     document.getElementById('pItuana').value = produto.preco_ituana || 0;
     document.getElementById('pUnico').value = produto.preco_unico || 0;
 
-    // Ajusta os botões e títulos da tela
-    const tituloForm = document.getElementById('tituloFormulario');
-    const btnSalvar = document.getElementById('btnSalvarForm');
-    const btnCancelar = document.getElementById('btnCancelarForm');
-
-    if (tituloForm) tituloForm.innerText = `Editando Produto #${id}`;
-    if (btnSalvar) btnSalvar.innerText = 'Atualizar Produto';
-    if (btnCancelar) btnCancelar.style.display = 'inline-block';
+    // Ajusta o título e botões da tela
+    document.getElementById('tituloFormulario').innerText = `Editando Produto #${id}`;
+    document.getElementById('btnSalvarForm').innerText = 'Salvar Alterações';
+    document.getElementById('btnCancelarForm').style.display = 'inline-block';
 
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
+// 5. CANCELAR MODO DE EDIÇÃO
 function cancelarEdicao() {
     idEditando = null;
     document.getElementById('formProduto').reset();
 
-    const tituloForm = document.getElementById('tituloFormulario');
-    const btnSalvar = document.getElementById('btnSalvarForm');
-    const btnCancelar = document.getElementById('btnCancelarForm');
-
-    if (tituloForm) tituloForm.innerText = 'Cadastrar Novo Produto';
-    if (btnSalvar) btnSalvar.innerText = 'Cadastrar Produto';
-    if (btnCancelar) btnCancelar.style.display = 'none';
+    document.getElementById('tituloFormulario').innerText = 'Cadastrar Novo Produto';
+    document.getElementById('btnSalvarForm').innerText = 'Cadastrar Produto';
+    document.getElementById('btnCancelarForm').style.display = 'none';
 }
 
-// ================= SALVAR (CRIAR OU ATUALIZAR) =================
+// Helper para tratar inputs numéricos vazios
+function obterNumero(idInput) {
+    const val = parseFloat(document.getElementById(idInput)?.value);
+    return isNaN(val) ? 0 : val;
+}
+
+// 6. SALVAR (CRIAR NOVO OU ENVIAR PUT PARA ATUALIZAR)
 async function salvarProduto(event) {
-    if (event) event.preventDefault();
+    if (event) event.preventDefault(); // Impede o reload da página
 
     const dados = {
         categoria: document.getElementById('pCategoria').value,
         subcategoria: document.getElementById('pSubcategoria').value,
         nome: document.getElementById('pNome').value.trim(),
         descricao: document.getElementById('pDescricao').value.trim(),
-        preco_broto: parseFloat(document.getElementById('pBroto').value) || 0,
-        preco_media: parseFloat(document.getElementById('pMedia').value) || 0,
-        preco_grande: parseFloat(document.getElementById('pGrande').value) || 0,
-        preco_familia: parseFloat(document.getElementById('pFamilia').value) || 0,
-        preco_ituana: parseFloat(document.getElementById('pItuana').value) || 0,
-        preco_unico: parseFloat(document.getElementById('pUnico').value) || 0
+        preco_broto: obterNumero('pBroto'),
+        preco_media: obterNumero('pMedia'),
+        preco_grande: obterNumero('pGrande'),
+        preco_familia: obterNumero('pFamilia'),
+        preco_ituana: obterNumero('pItuana'),
+        preco_unico: obterNumero('pUnico')
     };
 
     if (!dados.nome) {
-        alert('Por favor, informe o nome do produto.');
+        alert('Por favor, digite o nome do produto.');
         return;
     }
 
@@ -160,7 +142,7 @@ async function salvarProduto(event) {
             method: metodo,
             headers: {
                 'Content-Type': 'application/json',
-                'x-admin-password': SENHA_ADMIN
+                'x-admin-password': SENHA_ADMIN // Envia a senha exigida pelo middleware do server.js
             },
             body: JSON.stringify(dados)
         });
@@ -172,15 +154,15 @@ async function salvarProduto(event) {
             cancelarEdicao();
             carregarProdutos();
         } else {
-            alert(`Erro do servidor: ${resData.erro || 'Falha ao salvar'}`);
+            alert(`Erro no servidor (${resposta.status}): ${resData.erro || resData.mensagem || 'Falha ao salvar'}`);
         }
     } catch (erro) {
-        console.error('Erro ao enviar requisição:', erro);
+        console.error('Erro na requisição:', erro);
         alert('Erro ao se comunicar com o servidor.');
     }
 }
 
-// ================= EXCLUIR PRODUTO =================
+// 7. EXCLUIR PRODUTO
 async function excluirProduto(id) {
     if (!confirm(`Tem certeza que deseja excluir o produto #${id}?`)) return;
 
@@ -193,14 +175,14 @@ async function excluirProduto(id) {
         });
 
         if (resposta.ok) {
-            alert('Produto removido!');
+            alert('Produto excluído com sucesso!');
             carregarProdutos();
         } else {
             const resData = await resposta.json();
-            alert(`Erro: ${resData.erro}`);
+            alert(`Erro ao excluir: ${resData.erro || 'Acesso negado'}`);
         }
     } catch (erro) {
         console.error('Erro ao excluir:', erro);
-        alert('Falha ao tentar excluir o produto.');
+        alert('Falha de conexão ao tentar excluir.');
     }
 }
