@@ -70,7 +70,9 @@ async function carregarCardapioDoBanco() {
         const produtosBanco = await resposta.json();
 
         if (Array.isArray(produtosBanco) && produtosBanco.length > 0) {
-            const pizzasBanco = produtosBanco.filter(p => p.categoria === 'pizza');
+
+            // 1. Pega apenas as pizzas (excluindo as que têm subcategoria 'promocao')
+            const pizzasBanco = produtosBanco.filter(p => p.categoria === 'pizza' && p.subcategoria !== 'promocao');
             if (pizzasBanco.length > 0) {
                 SABORES = pizzasBanco.map(p => ({
                     id: p.id,
@@ -86,6 +88,40 @@ async function carregarCardapioDoBanco() {
                     }
                 }));
             }
+
+            // 2. Aceita promoções cadastradas via painel (categoria='promocao') OU via código (subcategoria='promocao')
+            const promosBanco = produtosBanco.filter(p => p.categoria === 'promocao' || p.subcategoria === 'promocao');
+            if (promosBanco.length > 0) {
+                PROMOCOES = promosBanco.map(p => {
+                    const preco = p.preco_unico || p.preco_grande || 0;
+                    return {
+                        id: p.id,
+                        nome: p.nome,
+                        desc: p.descricao || '',
+                        precos: { broto: preco, media: preco, grande: preco, familia: preco, ituana: preco }
+                    };
+                });
+            }
+
+            // 3. Mantém o filtro de bebidas (basta adicionar produtos como "bebida" no painel admin)
+            const bebidasBanco = produtosBanco.filter(p => p.categoria === 'bebida');
+            if (bebidasBanco.length > 0) {
+                BEBIDAS = bebidasBanco.map(p => {
+                    const preco = p.preco_unico || p.preco_grande || 0;
+                    return {
+                        id: p.id,
+                        nome: p.nome,
+                        desc: p.descricao || '',
+                        precos: { broto: preco, media: preco, grande: preco, familia: preco, ituana: preco }
+                    };
+                });
+            }
+
+            renderizarDestaques();
+            renderizarCardapio(SABORES, 'cardapioContainer', 'montador');
+            renderizarCardapio(PROMOCOES, 'promocoesContainer', 'promo');
+            renderizarCardapio(BEBIDAS, 'bebidasContainer', 'bebida');
+        }
 
             const promosBanco = produtosBanco.filter(p => p.categoria === 'promocao');
             if (promosBanco.length > 0) {

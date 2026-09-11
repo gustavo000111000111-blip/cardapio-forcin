@@ -273,3 +273,18 @@ header p { font-size: 14px; opacity: 0.95; margin-bottom: 10px; }
 .btn-copiar-pix:hover { background-color: var(--primary-dark); }
 .btn-copiar-pix:active { transform: scale(0.97); }
 .msg-pix-sucesso { color: #16a34a; font-weight: bold; font-size: 12px; margin-top: 5px; display: block; }
+
+footer {
+    text-align: center;
+    padding: 20px;
+    background-color: var(--bg-main);
+    font-size: 12px;
+    border-top: 1px solid var(--border-color);
+    color: #888;
+}
+
+footer a { color: var(--accent-gold); text-decoration: none; font-weight: bold; }
+
+}
+
+.cart-footer { padding: 15px; border-top: 1px solid var(--border-color); background: var(--bg-main); }
