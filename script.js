@@ -12,7 +12,7 @@ let SABORES = [];
 let PROMOCOES = [];
 let BEBIDAS = [];
 
-const DESTAQUES_IDS = [63, 82, 47, 4, 13, 57, 50, 44];
+const DESTAQUES_IDS = [63, 82, 47, 4, 13, 57, 50, 8];
 
 // ================= ESTADO GLOBAL DO SISTEMA =================
 const TELEFONE_WHATSAPP = '5511950826677';
