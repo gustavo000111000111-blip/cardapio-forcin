@@ -8,40 +8,40 @@
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
         body { background-color: #f4f6f8; margin: 0; padding: 20px; }
         h1 { text-align: center; color: #333; margin-bottom: 20px; }
-        
+
         .grid-comandas { display: flex; flex-wrap: wrap; gap: 20px; justify-content: center; }
-        .card-comanda { 
-            background: #fff; 
-            border-top: 5px solid #e74c3c; 
-            border-radius: 8px; 
-            width: 380px; 
-            padding: 15px; 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.08); 
-            display: flex; 
-            flex-direction: column; 
+        .card-comanda {
+            background: #fff;
+            border-top: 5px solid #e74c3c;
+            border-radius: 8px;
+            width: 380px;
+            padding: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+            display: flex;
+            flex-direction: column;
             gap: 15px;
         }
 
         /* Estilo da Via Cozinha */
-        .via-cozinha { 
-            background: #fff9f9; 
-            border: 1px dashed #e74c3c; 
-            padding: 10px; 
-            border-radius: 6px; 
+        .via-cozinha {
+            background: #fff9f9;
+            border: 1px dashed #e74c3c;
+            padding: 10px;
+            border-radius: 6px;
         }
         .via-cozinha h3 { margin: 0 0 8px 0; color: #c0392b; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; }
-        
+
         /* Estilo da Via Motoboy */
-        .via-motoboy { 
-            background: #f0f7fb; 
-            border: 1px solid #3498db; 
-            padding: 10px; 
-            border-radius: 6px; 
+        .via-motoboy {
+            background: #f0f7fb;
+            border: 1px solid #3498db;
+            padding: 10px;
+            border-radius: 6px;
         }
         .via-motoboy h3 { margin: 0 0 8px 0; color: #2980b9; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center; }
 
         .data { color: #7f8c8d; font-size: 0.8em; font-weight: normal; }
-        
+
         .item-box { margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px dotted #ddd; }
         .item-titulo { font-weight: bold; color: #2c3e50; font-size: 1.05em; }
         .item-sub { font-size: 0.9em; color: #c0392b; font-weight: 500; padding-left: 10px; }
@@ -51,7 +51,7 @@
         .endereco-texto { font-size: 1.15em; font-weight: bold; color: #2c3e50; margin-top: 2px; }
 
         .total { font-weight: bold; font-size: 1.1em; color: #27ae60; }
-        
+
         .btn-imprimir-cozinha { background: #e67e22; color: #fff; border: none; padding: 6px 10px; border-radius: 4px; cursor: pointer; width: 100%; font-weight: bold; margin-top: 8px; }
         .btn-imprimir-cozinha:hover { background: #d35400; }
 
@@ -81,12 +81,25 @@
     </div>
 
     <script>
+    // Converte números inteiros em letras (1 = A, 2 = B ... 26 = Z, 27 = AA ...)
+    function numeroParaLetra(num) {
+        let n = parseInt(num, 10);
+        if (isNaN(n) || n <= 0) return num;
+        let codigo = '';
+        while (n > 0) {
+            let resto = (n - 1) % 26;
+            codigo = String.fromCharCode(65 + resto) + codigo;
+            n = Math.floor((n - 1) / 26);
+        }
+        return codigo;
+    }
+
     async function carregarComandas() {
         try {
             const resposta = await fetch('/api/comandas');
             const comandas = await resposta.json();
             const container = document.getElementById('gridComandas');
-            
+
             if (!comandas || comandas.length === 0) {
                 container.innerHTML = '<p>Nenhuma comanda recebida ainda.</p>';
                 return;
@@ -95,9 +108,11 @@
 
             comandas.forEach(comanda => {
                 const dataHora = new Date(comanda.data || comanda.timestamp).toLocaleString('pt-BR');
+                const codigoLetra = numeroParaLetra(comanda.id); // Converte o ID para letra (ex: A, B, C...)
+
                 let itensHTML = '';
                 const itensArray = typeof comanda.itens === 'string' ? JSON.parse(comanda.itens) : comanda.itens;
-                
+
                 if (Array.isArray(itensArray)) {
                     itensHTML = itensArray.map(item => `
                         <div class="item-box">
@@ -115,7 +130,7 @@
                     <!-- VIA DA COZINHA -->
                     <div class="via-cozinha" id="via-cozinha-${comanda.id}">
                         <h3>
-                            <span>🍕 COZINHA #${comanda.id}</span>
+                            <span>🍕 COZINHA - ${codigoLetra}</span>
                             <span class="data">${dataHora}</span>
                         </h3>
                         <div class="itens-lista">${itensHTML}</div>
@@ -125,12 +140,12 @@
                     <!-- VIA DO MOTOBOY -->
                     <div class="via-motoboy" id="via-moto-${comanda.id}">
                         <h3>
-                            <span>🛵 MOTOBOY #${comanda.id}</span>
+                            <span>🛵 MOTOBOY - ${codigoLetra}</span>
                             <span class="data">${dataHora}</span>
                         </h3>
                         <div style="font-size: 1.05em; margin-bottom: 4px;"><strong>Cliente:</strong> ${comanda.cliente}</div>
                         <div style="font-size: 0.95em; margin-bottom: 4px;"><strong>Telefone:</strong> ${comanda.telefone || 'Não informado'}</div>
-                        
+
                         <div class="endereco-box">
                             <div style="font-size: 0.8em; color: #e74c3c; font-weight: bold;">ENDEREÇO DE ENTREGA:</div>
                             <div class="endereco-texto">📍 ${comanda.endereco || 'Retirada no Balcão'}</div>
@@ -163,11 +178,11 @@
         printArea.id = 'print-area';
         printArea.style.padding = '10px';
         printArea.style.background = '#fff';
-        
+
         const clone = elementoAlvo.cloneNode(true);
         const botao = clone.querySelector('button');
         if (botao) botao.remove();
-        
+
         printArea.appendChild(clone);
         document.body.appendChild(printArea);
 
