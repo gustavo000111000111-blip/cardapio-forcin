@@ -652,6 +652,10 @@ function confirmarMontarOutraPizza() {
 }
 
 // ================= ENVIO WHATSAPP =================
+// Substitua todo o conteúdo da função enviarWhatsApp no seu arquivo (script_4.js ou script.js)
+
+const TELEFONE_WHATSAPP = '5511999999999'; // Insira aqui o número da pizzaria com DDD (apenas números)
+
 async function enviarWhatsApp() {
     const nome = document.getElementById('cliNome')?.value.trim();
     const telefoneCliente = document.getElementById('cliTelefone')?.value.trim();
@@ -660,8 +664,14 @@ async function enviarWhatsApp() {
     const pagamentoEl = document.querySelector('input[name="cliPagamento"]:checked');
     const pagamento = pagamentoEl ? pagamentoEl.value : 'pix';
 
-    if (!nome) { alert('Por favor, informe seu nome.'); return; }
-    if (!telefoneCliente) { alert('Por favor, informe seu telefone / WhatsApp.'); return; }
+    if (!nome) { 
+        alert('Por favor, informe seu nome.'); 
+        return; 
+    }
+    if (!telefoneCliente) { 
+        alert('Por favor, informe seu telefone / WhatsApp.'); 
+        return; 
+    }
 
     let enderecoTexto = 'Retirada no Balcão';
     if (entrega === 'delivery') {
@@ -680,7 +690,10 @@ async function enviarWhatsApp() {
         pagamentoTexto += troco ? ` (Troco para R$ ${troco})` : ' (Sem troco)';
     }
 
-    salvarDadosCliente();
+    if (typeof salvarDadosCliente === 'function') {
+        salvarDadosCliente();
+    }
+    
     const totalCalculado = carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
 
     try {
@@ -701,6 +714,36 @@ async function enviarWhatsApp() {
 
     let msg = `==============================\n`;
     msg += `        *FORCIN PIZZARIA*       \n`;
+    msg += `==============================\n\n`;
+    msg += `👤 *Cliente:* ${nome}\n`;
+    msg += `📞 *Telefone:* ${telefoneCliente}\n`;
+    msg += `🛵 *Tipo:* ${entrega === 'delivery' ? 'Delivery' : 'Retirada'}\n`;
+    if (entrega === 'delivery') {
+        msg += `📍 *Endereço:* ${enderecoTexto}\n`;
+    }
+    msg += `💳 *Pagamento:* ${pagamentoTexto}\n\n`;
+    msg += `------------------------------\n`;
+    msg += `🍕 *ITENS DO PEDIDO*\n`;
+    msg += `------------------------------\n`;
+
+    carrinho.forEach((item, index) => {
+        const subtotal = (item.preco * item.quantidade).toFixed(2).replace('.', ',');
+        msg += `*${index + 1}. [${item.quantidade}x] ${item.titulo}*\n`;
+        msg += `   └ ${item.detalhes}\n`;
+        if (item.observacao) msg += `   └ 📝 Obs: ${item.observacao}\n`;
+        msg += `   └ Subtotal: R$ ${subtotal}\n\n`;
+    });
+
+    msg += `==============================\n`;
+    msg += `💰 *TOTAL: R$ ${totalCalculado.toFixed(2).replace('.', ',')}*\n`;
+    msg += `==============================`;
+
+    // 1. Exibe a janela de aviso na tela do cliente
+    alert("Aguarde no whatsapp a taxa de entrega!");
+
+    // 2. Redireciona para o WhatsApp após o cliente clicar em OK
+    window.open(`https://wa.me/${TELEFONE_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
+}
     msg += `==============================\n\n`;
     msg += `👤 *Cliente:* ${nome}\n`;
     msg += `📞 *Telefone:* ${telefoneCliente}\n`;
