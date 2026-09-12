@@ -14,12 +14,13 @@ let BEBIDAS = [];
 const DESTAQUES_IDS = [63, 82, 47, 4, 13, 57, 50, 8];
 
 // ================= ESTADO GLOBAL DO SISTEMA =================
-const TELEFONE_WHATSAPP = '5511950826677';
+const TELEFONE_WHATSAPP = '5511950826677'; // Seu número do WhatsApp com DDD
 const CHAVE_LOCAL_STORAGE = 'forcin_pizzaria_cliente';
 
 let tamanhoSelecionado = TAMANHOS[2]; // Padrão Grande
 let saboresSelecionados = [];
 let carrinho = [];
+let urlWhatsAppFinal = ''; // Armazena o link do WhatsApp para o modal
 
 // ================= INICIALIZAÇÃO DA APLICAÇÃO =================
 document.addEventListener('DOMContentLoaded', () => {
@@ -44,6 +45,17 @@ function configurarEventosInterface() {
 
     const selectTipoImovel = document.getElementById('cliTipoImovel');
     if (selectTipoImovel) selectTipoImovel.addEventListener('change', toggleCamposImovel);
+
+    const btnModal = document.getElementById('btnModalWhats');
+    if (btnModal) {
+        btnModal.addEventListener('click', () => {
+            const modal = document.getElementById('modalAviso');
+            if (modal) modal.style.display = 'none';
+            if (urlWhatsAppFinal) {
+                window.open(urlWhatsAppFinal, '_blank');
+            }
+        });
+    }
 }
 
 // ================= CONTROLE DE ABAS =================
@@ -650,11 +662,6 @@ function confirmarMontarOutraPizza() {
     }
     fecharModalLimite();
 }
-
-// ================= ENVIO WHATSAPP =================
-// Substitua todo o conteúdo da função enviarWhatsApp no seu arquivo (script_4.js ou script.js)
-
-const TELEFONE_WHATSAPP = '5511999999999'; // Insira aqui o número da pizzaria com DDD (apenas números)
 
 // ================= ENVIO WHATSAPP =================
 async function enviarWhatsApp() {
