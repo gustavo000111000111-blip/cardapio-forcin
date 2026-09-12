@@ -656,6 +656,7 @@ function confirmarMontarOutraPizza() {
 
 const TELEFONE_WHATSAPP = '5511999999999'; // Insira aqui o número da pizzaria com DDD (apenas números)
 
+// ================= ENVIO WHATSAPP =================
 async function enviarWhatsApp() {
     const nome = document.getElementById('cliNome')?.value.trim();
     const telefoneCliente = document.getElementById('cliTelefone')?.value.trim();
@@ -738,35 +739,13 @@ async function enviarWhatsApp() {
     msg += `💰 *TOTAL: R$ ${totalCalculado.toFixed(2).replace('.', ',')}*\n`;
     msg += `==============================`;
 
-    // 1. Exibe a janela de aviso na tela do cliente
-    alert("Aguarde no whatsapp a taxa de entrega!");
+    urlWhatsAppFinal = `https://wa.me/${TELEFONE_WHATSAPP}?text=${encodeURIComponent(msg)}`;
 
-    // 2. Redireciona para o WhatsApp após o cliente clicar em OK
-    window.open(`https://wa.me/${TELEFONE_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
-}
-    msg += `==============================\n\n`;
-    msg += `👤 *Cliente:* ${nome}\n`;
-    msg += `📞 *Telefone:* ${telefoneCliente}\n`;
-    msg += `🛵 *Tipo:* ${entrega === 'delivery' ? 'Delivery' : 'Retirada'}\n`;
-    if (entrega === 'delivery') {
-        msg += `📍 *Endereço:* ${enderecoTexto}\n`;
+    const modal = document.getElementById('modalAviso');
+    if (modal) {
+        modal.style.display = 'flex';
+    } else {
+        alert("Aguarde no whatsapp a taxa de entrega!");
+        window.open(urlWhatsAppFinal, '_blank');
     }
-    msg += `💳 *Pagamento:* ${pagamentoTexto}\n\n`;
-    msg += `------------------------------\n`;
-    msg += `🍕 *ITENS DO PEDIDO*\n`;
-    msg += `------------------------------\n`;
-
-    carrinho.forEach((item, index) => {
-        const subtotal = (item.preco * item.quantidade).toFixed(2).replace('.', ',');
-        msg += `*${index + 1}. [${item.quantidade}x] ${item.titulo}*\n`;
-        msg += `   └ ${item.detalhes}\n`;
-        if (item.observacao) msg += `   └ 📝 Obs: ${item.observacao}\n`;
-        msg += `   └ Subtotal: R$ ${subtotal}\n\n`;
-    });
-
-    msg += `==============================\n`;
-    msg += `💰 *TOTAL: R$ ${totalCalculado.toFixed(2).replace('.', ',')}*\n`;
-    msg += `==============================`;
-
-    window.open(`https://wa.me/${TELEFONE_WHATSAPP}?text=${encodeURIComponent(msg)}`, '_blank');
 }
