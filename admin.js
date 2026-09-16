@@ -1,8 +1,7 @@
-const SENHA_ADMIN = '21072026'; // Senha configurada no server.js
+const SENHA_ADMIN = '21072026';
 let todosProdutos = [];
 let idEditando = null;
 
-// Executa ao carregar a página
 document.addEventListener('DOMContentLoaded', () => {
     carregarProdutos();
 });
@@ -11,7 +10,6 @@ function sairPainel() {
     window.location.href = '/';
 }
 
-// 1. CARREGAR PRODUTOS DO BANCO DE DADOS
 async function carregarProdutos() {
     try {
         const resposta = await fetch('/api/produtos');
@@ -25,7 +23,6 @@ async function carregarProdutos() {
     }
 }
 
-// 2. EXIBIR OS PRODUTOS NA TABELA HTML
 function renderizarTabela(lista) {
     const tabela = document.getElementById('tabelaProdutos');
     if (!tabela) return;
@@ -35,7 +32,7 @@ function renderizarTabela(lista) {
         return;
     }
 
-    tabela.innerHTML = lista.map(p => {
+    tabela.innerHTML = lista.map((p, index) => {
         const precoExibicao = p.preco_unico > 0 
             ? `R$ ${Number(p.preco_unico).toFixed(2)}` 
             : `G: R$ ${Number(p.preco_grande || 0).toFixed(2)}`;
@@ -49,7 +46,9 @@ function renderizarTabela(lista) {
                 </td>
                 <td><span class="badge">${p.categoria}</span> ${p.subcategoria ? `(${p.subcategoria})` : ''}</td>
                 <td>${precoExibicao}</td>
-                <td style="text-align: right;">
+                <td style="text-align: right; white-space: nowrap;">
+                    <button onclick="moverProduto(${index}, -1)" title="Subir na lista" style="background:#2c3e50; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; margin-right:3px;">⬆️</button>
+                    <button onclick="moverProduto(${index}, 1)" title="Descer na lista" style="background:#2c3e50; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; margin-right:8px;">⬇️</button>
                     <button onclick="prepararEdicao(${p.id})" style="background:#27ae60; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; margin-right:5px;">Editar</button>
                     <button onclick="excluirProduto(${p.id})" style="background:#c0392b; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Excluir</button>
                 </td>
@@ -58,7 +57,44 @@ function renderizarTabela(lista) {
     }).join('');
 }
 
-// 3. BUSCAR / FILTRAR PRODUTOS
+// Move o produto para cima (-1) ou para baixo (+1) na ordem
+async function moverProduto(index, direcao) {
+    const novoIndex = index + direcao;
+    if (novoIndex < 0 || novoIndex >= todosProdutos.length) return;
+
+    // Troca elementos de posição
+    const temp = todosProdutos[index];
+    todosProdutos[index] = todosProdutos[novoIndex];
+    todosProdutos[novoIndex] = temp;
+
+    // Atualiza a propriedade ordem
+    const payload = todosProdutos.map((p, idx) => ({
+        id: p.id,
+        ordem: idx + 1
+    }));
+
+    renderizarTabela(todosProdutos);
+
+    try {
+        const resposta = await fetch('/api/produtos/reordenar', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-admin-password': SENHA_ADMIN
+            },
+            body: JSON.stringify({ itens: payload })
+        });
+
+        if (!resposta.ok) {
+            alert('Erro ao salvar nova ordem no servidor.');
+            carregarProdutos();
+        }
+    } catch (erro) {
+        console.error('Erro na reordenação:', erro);
+        carregarProdutos();
+    }
+}
+
 function filtrarProdutos() {
     const termo = document.getElementById('inputBusca')?.value.toLowerCase() || '';
     const filtrados = todosProdutos.filter(p => 
@@ -68,14 +104,12 @@ function filtrarProdutos() {
     renderizarTabela(filtrados);
 }
 
-// 4. PREENCHER O FORMULÁRIO COM OS DADOS DO ITEM PARA EDITAR
 function prepararEdicao(id) {
     const produto = todosProdutos.find(p => Number(p.id) === Number(id));
     if (!produto) return;
 
     idEditando = id;
 
-    // Preenche os inputs do formulário
     document.getElementById('pCategoria').value = produto.categoria || 'pizza';
     document.getElementById('pSubcategoria').value = produto.subcategoria || 'tradicional';
     document.getElementById('pNome').value = produto.nome || '';
@@ -88,7 +122,6 @@ function prepararEdicao(id) {
     document.getElementById('pItuana').value = produto.preco_ituana || 0;
     document.getElementById('pUnico').value = produto.preco_unico || 0;
 
-    // Ajusta o título e botões da tela
     document.getElementById('tituloFormulario').innerText = `Editando Produto #${id}`;
     document.getElementById('btnSalvarForm').innerText = 'Salvar Alterações';
     document.getElementById('btnCancelarForm').style.display = 'inline-block';
@@ -96,7 +129,6 @@ function prepararEdicao(id) {
     window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
-// 5. CANCELAR MODO DE EDIÇÃO
 function cancelarEdicao() {
     idEditando = null;
     document.getElementById('formProduto').reset();
@@ -106,15 +138,13 @@ function cancelarEdicao() {
     document.getElementById('btnCancelarForm').style.display = 'none';
 }
 
-// Helper para tratar inputs numéricos vazios
 function obterNumero(idInput) {
     const val = parseFloat(document.getElementById(idInput)?.value);
     return isNaN(val) ? 0 : val;
 }
 
-// 6. SALVAR (CRIAR NOVO OU ENVIAR PUT PARA ATUALIZAR)
 async function salvarProduto(event) {
-    if (event) event.preventDefault(); // Impede o reload da página
+    if (event) event.preventDefault();
 
     const dados = {
         categoria: document.getElementById('pCategoria').value,
@@ -124,7 +154,7 @@ async function salvarProduto(event) {
         preco_broto: obterNumero('pBroto'),
         preco_media: obterNumero('pMedia'),
         preco_grande: obterNumero('pGrande'),
-        preco_familia: obterNumero('pFamilia'),
+        preco_familia: obterNumero('pGrande') ? obterNumero('pFamilia') : 0,
         preco_ituana: obterNumero('pItuana'),
         preco_unico: obterNumero('pUnico')
     };
@@ -142,7 +172,7 @@ async function salvarProduto(event) {
             method: metodo,
             headers: {
                 'Content-Type': 'application/json',
-                'x-admin-password': SENHA_ADMIN // Envia a senha exigida pelo middleware do server.js
+                'x-admin-password': SENHA_ADMIN
             },
             body: JSON.stringify(dados)
         });
@@ -162,7 +192,6 @@ async function salvarProduto(event) {
     }
 }
 
-// 7. EXCLUIR PRODUTO
 async function excluirProduto(id) {
     if (!confirm(`Tem certeza que deseja excluir o produto #${id}?`)) return;
 

@@ -13,16 +13,14 @@ let BEBIDAS = [];
 
 const DESTAQUES_IDS = [63, 82, 47, 4, 13, 57, 50, 8];
 
-// ================= ESTADO GLOBAL DO SISTEMA =================
-const TELEFONE_WHATSAPP = '5511950826677'; // Seu número do WhatsApp com DDD
+const TELEFONE_WHATSAPP = '5511950826677';
 const CHAVE_LOCAL_STORAGE = 'forcin_pizzaria_cliente';
 
 let tamanhoSelecionado = TAMANHOS[2]; // Padrão Grande
 let saboresSelecionados = [];
 let carrinho = [];
-let urlWhatsAppFinal = ''; // Armazena o link do WhatsApp para o modal
+let urlWhatsAppFinal = '';
 
-// ================= INICIALIZAÇÃO DA APLICAÇÃO =================
 document.addEventListener('DOMContentLoaded', () => {
     carregarDadosSalvosCliente();
     carregarCardapioDoBanco();
@@ -35,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
     toggleCamposImovel();
 });
 
-// ================= CONFIGURAÇÃO DE EVENTOS DA INTERFACE =================
 function configurarEventosInterface() {
     const selectPagto = document.getElementById('cliPagamento');
     if (selectPagto) selectPagto.addEventListener('change', toggleTroco);
@@ -45,20 +42,8 @@ function configurarEventosInterface() {
 
     const selectTipoImovel = document.getElementById('cliTipoImovel');
     if (selectTipoImovel) selectTipoImovel.addEventListener('change', toggleCamposImovel);
-
-    const btnModal = document.getElementById('btnModalWhats');
-    if (btnModal) {
-        btnModal.addEventListener('click', () => {
-            const modal = document.getElementById('modalAviso');
-            if (modal) modal.style.display = 'none';
-            if (urlWhatsAppFinal) {
-                window.open(urlWhatsAppFinal, '_blank');
-            }
-        });
-    }
 }
 
-// ================= CONTROLE DE ABAS =================
 function trocarAba(aba, btn) {
     document.querySelectorAll('.tab-content').forEach(content => {
         content.classList.remove('active');
@@ -69,10 +54,24 @@ function trocarAba(aba, btn) {
 
     const target = document.getElementById(`aba-${aba}`);
     if (target) target.classList.add('active');
-    if (btn) btn.classList.add('active');
+    
+    if (btn) {
+        btn.classList.add('active');
+    } else {
+        const defaultBtn = document.querySelector(`.tab-btn[onclick*="${aba}"]`);
+        if (defaultBtn) defaultBtn.classList.add('active');
+    }
 }
 
-// ================= INTEGRAÇÃO COM BANCO DE DADOS (API) =================
+// Ordenação genérica por preço crescente
+function ordenarPorPreco(lista) {
+    return [...lista].sort((a, b) => {
+        const precoA = a.precos ? (a.precos[tamanhoSelecionado.id] || a.precos.grande || 0) : (a.preco || 0);
+        const precoB = b.precos ? (b.precos[tamanhoSelecionado.id] || b.precos.grande || 0) : (b.preco || 0);
+        return precoA - precoB;
+    });
+}
+
 async function carregarCardapioDoBanco() {
     try {
         const resposta = await fetch('/api/produtos');
@@ -82,7 +81,6 @@ async function carregarCardapioDoBanco() {
 
         if (Array.isArray(produtosBanco) && produtosBanco.length > 0) {
 
-            // 1. Pega apenas as pizzas (excluindo as que têm subcategoria 'promocao')
             const pizzasBanco = produtosBanco.filter(p => p.categoria === 'pizza' && p.subcategoria !== 'promocao');
             if (pizzasBanco.length > 0) {
                 SABORES = pizzasBanco.map(p => ({
@@ -100,7 +98,6 @@ async function carregarCardapioDoBanco() {
                 }));
             }
 
-            // 2. Aceita promoções cadastradas via painel (categoria='promocao') OU via código (subcategoria='promocao')
             const promosBanco = produtosBanco.filter(p => p.categoria === 'promocao' || p.subcategoria === 'promocao');
             if (promosBanco.length > 0) {
                 PROMOCOES = promosBanco.map(p => {
@@ -114,7 +111,6 @@ async function carregarCardapioDoBanco() {
                 });
             }
 
-            // 3. Mantém o filtro de bebidas
             const bebidasBanco = produtosBanco.filter(p => p.categoria === 'bebida');
             if (bebidasBanco.length > 0) {
                 BEBIDAS = bebidasBanco.map(p => {
@@ -129,16 +125,15 @@ async function carregarCardapioDoBanco() {
             }
 
             renderizarDestaques();
-            renderizarCardapio(SABORES, 'cardapioContainer', 'montador');
-            renderizarCardapio(PROMOCOES, 'promocoesContainer', 'promo');
-            renderizarCardapio(BEBIDAS, 'bebidasContainer', 'bebida');
+            renderizarCardapio(ordenarPorPreco(SABORES), 'cardapioContainer', 'montador');
+            renderizarCardapio(ordenarPorPreco(PROMOCOES), 'promocoesContainer', 'promo');
+            renderizarCardapio(BEBIDAS, 'bebidasContainer', 'bebida'); // Mantém sem ordenar por preço
         }
     } catch (erro) {
         console.error('Erro ao conectar com a API do banco:', erro);
     }
 }
 
-// ================= VERIFICAÇÃO DE HORÁRIO =================
 function verificarLojaAberta() {
     const agora = new Date();
     const tempoAtual = agora.getHours() * 60 + agora.getMinutes();
@@ -159,7 +154,6 @@ function atualizarBadgeStatusLoja() {
     }
 }
 
-// ================= PERSISTÊNCIA LOCALSTORAGE =================
 function salvarDadosCliente() {
     const dadosCliente = {
         nome: document.getElementById('cliNome')?.value || '',
@@ -192,7 +186,6 @@ function carregarDadosSalvosCliente() {
     }
 }
 
-// ================= RENDERIZAÇÃO DA INTERFACE =================
 function normalizarNomeFoto(nome) {
     return nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 }
@@ -283,21 +276,20 @@ function renderizarCardapio(lista, containerId, tipo) {
     }).join('');
 }
 
-// ================= LÓGICA DE MONTAGEM E CALCULOS =================
 function selecionarTamanho(id) {
     tamanhoSelecionado = TAMANHOS.find(t => t.id === id);
     if (saboresSelecionados.length > tamanhoSelecionado.maxSabores) {
         saboresSelecionados = saboresSelecionados.slice(0, tamanhoSelecionado.maxSabores);
     }
     renderizarTamanhos();
-    renderizarCardapio(SABORES, 'cardapioContainer', 'montador');
-    renderizarCardapio(PROMOCOES, 'promocoesContainer', 'promo');
+    renderizarCardapio(ordenarPorPreco(SABORES), 'cardapioContainer', 'montador');
+    renderizarCardapio(ordenarPorPreco(PROMOCOES), 'promocoesContainer', 'promo');
     renderizarCardapio(BEBIDAS, 'bebidasContainer', 'bebida');
     atualizarMontagemUI();
 }
 
 function tentarAdicionarSabor(saborId) {
-    const sabor = SABORES.find(s => String(s.id) === String(saborId));
+    const sabor = SABORES.find(s => String(s.id) === String(saborId)) || PROMOCOES.find(p => String(p.id) === String(saborId));
     if (!sabor) return;
 
     if (saboresSelecionados.length < tamanhoSelecionado.maxSabores) {
@@ -305,6 +297,21 @@ function tentarAdicionarSabor(saborId) {
         atualizarMontagemUI();
     } else {
         abrirModalLimite(sabor.nome);
+    }
+}
+
+// Alterado: Adiciona a pizza promocional como sabor no montador de pizzas
+function tentarAdicionarPromocao(id) {
+    const promo = PROMOCOES.find(p => String(p.id) === String(id));
+    if (!promo) return;
+
+    if (saboresSelecionados.length < tamanhoSelecionado.maxSabores) {
+        saboresSelecionados.push(promo);
+        atualizarMontagemUI();
+        trocarAba('montar');
+        mostrarNotificacao(`Sabor "${promo.nome}" adicionado à sua montagem!`);
+    } else {
+        abrirModalLimite(promo.nome);
     }
 }
 
@@ -377,7 +384,6 @@ function adicionarMontagemAoCarrinho() {
     mostrarNotificacao('Pizza adicionada ao carrinho!');
 }
 
-// ================= ADIÇÃO DIRETA =================
 function adicionarDestaqueAoCarrinho(saborId, event) {
     if (event) event.stopPropagation();
     const pizza = SABORES.find(s => String(s.id) === String(saborId)) || PROMOCOES.find(p => String(p.id) === String(saborId)) || BEBIDAS.find(b => String(b.id) === String(saborId));
@@ -396,24 +402,6 @@ function adicionarDestaqueAoCarrinho(saborId, event) {
     });
     atualizarCarrinhoUI();
     mostrarNotificacao(`Pizza ${pizza.nome} adicionada!`);
-}
-
-function tentarAdicionarPromocao(id) {
-    const promo = PROMOCOES.find(p => String(p.id) === String(id));
-    if (!promo) return;
-
-    const precoVal = promo.precos ? promo.precos.grande : (promo.preco || 0);
-    carrinho.push({
-        id: Date.now(),
-        tipo: 'promocao',
-        titulo: promo.nome,
-        detalhes: promo.desc,
-        preco: precoVal,
-        quantidade: 1,
-        observacao: ''
-    });
-    atualizarCarrinhoUI();
-    mostrarNotificacao(`Promoção "${promo.nome}" adicionada!`);
 }
 
 function tentarAdicionarBebida(id) {
@@ -441,7 +429,6 @@ function tentarAdicionarBebida(id) {
     mostrarNotificacao(`Bebida "${bebida.nome}" adicionada!`);
 }
 
-// ================= CARRINHO =================
 function alterarQuantidade(id, delta) {
     const item = carrinho.find(i => i.id === id);
     if (!item) return;
@@ -499,7 +486,6 @@ function atualizarCarrinhoUI() {
     `).join('');
 }
 
-// ================= MODAL CHECKOUT & FORMULÁRIO =================
 function abrirCheckout() {
     if (carrinho.length === 0) return;
     atualizarResumoCheckout();
@@ -565,12 +551,8 @@ function toggleTroco() {
     const grupoPix = document.getElementById('grupoPix');
     const grupoTroco = document.getElementById('grupoTroco');
 
-    if (grupoPix) {
-        grupoPix.style.display = (pagto === 'pix') ? 'block' : 'none';
-    }
-    if (grupoTroco) {
-        grupoTroco.style.display = (pagto === 'dinheiro') ? 'block' : 'none';
-    }
+    if (grupoPix) grupoPix.style.display = (pagto === 'pix') ? 'block' : 'none';
+    if (grupoTroco) grupoTroco.style.display = (pagto === 'dinheiro') ? 'block' : 'none';
 }
 
 function copiarChavePix() {
@@ -610,7 +592,6 @@ function mostrarNotificacao(mensagem) {
     setTimeout(() => { toast.style.opacity = '0'; }, 3000);
 }
 
-// ================= MODAL DE LIMITE DE SABORES =================
 function abrirModalLimite(saborNome) {
     const modal = document.getElementById('modalLimite');
     const spanNovoSabor = document.getElementById('modalNovoSabor');
@@ -663,7 +644,6 @@ function confirmarMontarOutraPizza() {
     fecharModalLimite();
 }
 
-// ================= ENVIO WHATSAPP =================
 async function enviarWhatsApp() {
     const nome = document.getElementById('cliNome')?.value.trim();
     const telefoneCliente = document.getElementById('cliTelefone')?.value.trim();

@@ -8,13 +8,12 @@ const { Pool } = require('pg');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
-const ADMIN_PASSWORD = '21072026'; // Senha do painel administrativo
+const ADMIN_PASSWORD = '21072026';
 
 app.use(express.json());
 app.use(cors());
 app.use(express.static(path.join(__dirname)));
 
-// Conexão com o Banco de Dados PostgreSQL (Externo)
 const pool = new Pool({
     connectionString: process.env.DATABASE_URL,
     ssl: { rejectUnauthorized: false }
@@ -31,7 +30,6 @@ pool.connect((err) => {
 
 async function criarTabelas() {
     try {
-        // Tabela de Produtos
         await pool.query(`CREATE TABLE IF NOT EXISTS produtos (
             id SERIAL PRIMARY KEY,
             categoria VARCHAR(50),
@@ -43,10 +41,10 @@ async function criarTabelas() {
             preco_grande DOUBLE PRECISION,
             preco_familia DOUBLE PRECISION,
             preco_ituana DOUBLE PRECISION,
-            preco_unico DOUBLE PRECISION
+            preco_unico DOUBLE PRECISION,
+            ordem INT DEFAULT 0
         )`);
 
-        // Garante que as colunas novas existam caso a tabela seja antiga
         await pool.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS subcategoria VARCHAR(50)`);
         await pool.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS descricao TEXT`);
         await pool.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS preco_broto DOUBLE PRECISION`);
@@ -55,11 +53,10 @@ async function criarTabelas() {
         await pool.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS preco_familia DOUBLE PRECISION`);
         await pool.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS preco_ituana DOUBLE PRECISION`);
         await pool.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS preco_unico DOUBLE PRECISION`);
+        await pool.query(`ALTER TABLE produtos ADD COLUMN IF NOT EXISTS ordem INT DEFAULT 0`);
 
-        // Remove a exigência da coluna antiga "preco" se ela existir na tabela do banco
         await pool.query(`ALTER TABLE produtos ALTER COLUMN preco DROP NOT NULL`).catch(() => {});
 
-        // Tabela de Comandas (expira em 1h30)
         await pool.query(`CREATE TABLE IF NOT EXISTS comandas (
             id SERIAL PRIMARY KEY,
             cliente VARCHAR(100),
@@ -75,6 +72,7 @@ async function criarTabelas() {
         console.error('Erro ao criar tabelas:', err.message);
     }
 }
+
 async function popularProdutosIniciais() {
     try {
         const { rows } = await pool.query("SELECT COUNT(*) as total FROM produtos");
@@ -86,15 +84,15 @@ async function popularProdutosIniciais() {
         console.log('Inserindo cardápio completo...');
         await pool.query("TRUNCATE TABLE produtos RESTART IDENTITY CASCADE");
 
-        const query = `INSERT INTO produtos (categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`;
+        const query = `INSERT INTO produtos (categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, ordem) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)`;
 
+        let contadorOrdem = 1;
         const inserir = async (cat, sub, itens, pB, pM, pG, pF, pI, pU) => {
             for (let item of itens) {
-                await pool.query(query, [cat, sub, item[0], item[1], pB, pM, pG, pF, pI, pU]);
+                await pool.query(query, [cat, sub, item[0], item[1], pB, pM, pG, pF, pI, pU, contadorOrdem++]);
             }
         };
 
-        // Grupo 1: Tradicionais
         const itensG1 = [
             ['ALHO AO AZEITE', 'Mussarela, alho ao azeite, tomate e azeitona preta'],
             ['BACON', 'Mussarela, bacon, tomate e azeitona preta'],
@@ -218,7 +216,7 @@ async function popularProdutosIniciais() {
             ['PODE SER', 'Mussarela, calabresa, batata palha e azeitona'],
             ['NÃO SEI AINDA', 'Mussarela, lombo, tomate, cebola e azeitona']
         ];
-        await inserir('pizza', 'promocao', promoG2, 0, 0, 52.0, 0, 0, 0);
+        await inserir('pizza', 'promocao', promoG1, 0, 0, 45.0, 0, 0, 0);
 
         console.log('Cardápio inserido no PostgreSQL com sucesso!');
     } catch (err) {
@@ -226,14 +224,10 @@ async function popularProdutosIniciais() {
     }
 }
 
-// Rotina automática: Limpar comandas com mais de 1h30 a cada 1 minuto
 setInterval(async () => {
     const limiteTempo = Date.now() - (90 * 60 * 1000);
     try {
-        const { rowCount } = await pool.query(`DELETE FROM comandas WHERE timestamp < $1`, [limiteTempo]);
-        if (rowCount > 0) {
-            console.log(`[Limpeza de Comandas] ${rowCount} comanda(s) expirada(s) removida(s).`);
-        }
+        await pool.query(`DELETE FROM comandas WHERE timestamp < $1`, [limiteTempo]);
     } catch (err) {
         console.error('Erro ao limpar comandas antigas:', err.message);
     }
@@ -243,8 +237,23 @@ setInterval(async () => {
 
 app.get('/api/produtos', async (req, res) => {
     try {
-        const { rows } = await pool.query('SELECT * FROM produtos');
+        const { rows } = await pool.query('SELECT * FROM produtos ORDER BY ordem ASC, id ASC');
         res.json(rows);
+    } catch (err) {
+        res.status(500).json({ erro: err.message });
+    }
+});
+
+app.put('/api/produtos/reordenar', verificarAdmin, async (req, res) => {
+    const { itens } = req.body;
+    if (!Array.isArray(itens)) {
+        return res.status(400).json({ erro: 'Formato inválido' });
+    }
+    try {
+        for (let item of itens) {
+            await pool.query('UPDATE produtos SET ordem = $1 WHERE id = $2', [item.ordem, item.id]);
+        }
+        res.json({ mensagem: 'Ordem atualizada com sucesso!' });
     } catch (err) {
         res.status(500).json({ erro: err.message });
     }
@@ -252,9 +261,12 @@ app.get('/api/produtos', async (req, res) => {
 
 app.post('/api/produtos', verificarAdmin, async (req, res) => {
     const { categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico } = req.body;
-    const query = `INSERT INTO produtos (categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`;
     try {
-        const { rows } = await pool.query(query, [categoria, subcategoria, nome, descricao, preco_broto || 0, preco_media || 0, preco_grande || 0, preco_familia || 0, preco_ituana || 0, preco_unico || 0]);
+        const countRes = await pool.query('SELECT MAX(ordem) as max_ordem FROM produtos');
+        const proximaOrdem = (countRes.rows[0].max_ordem || 0) + 1;
+
+        const query = `INSERT INTO produtos (categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, ordem) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING id`;
+        const { rows } = await pool.query(query, [categoria, subcategoria, nome, descricao, preco_broto || 0, preco_media || 0, preco_grande || 0, preco_familia || 0, preco_ituana || 0, preco_unico || 0, proximaOrdem]);
         res.status(200).json({ mensagem: 'Salvo com sucesso!', id: rows[0].id });
     } catch (err) {
         res.status(500).json({ erro: err.message });
