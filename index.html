@@ -165,6 +165,21 @@
                 <input type="text" id="cliNome" placeholder="Ex: João Silva">
             </div>
 
+            <!-- MODAL DE SUGESTÃO DE BEBIDA -->
+    <div class="modal-overlay" id="modalSugestaoBebida">
+        <div class="modal modal-center">
+            <h3>🥤 Leve também refrigerante!</h3>
+            <p>Que tal uma bebida bem gelada para acompanhar o seu pedido?</p>
+            <div class="modal-buttons">
+                <button class="btn-modal-option" onclick="irParaBebidas()">
+                    <strong>Ir para a aba Bebidas</strong>
+                    <span>Escolher refrigerantes, sumos ou águas.</span>
+                </button>
+                <button class="btn-close-modal" onclick="fecharModalSugestaoBebida()">Já adicionei / Não quero</button>
+            </div>
+        </div>
+    </div>
+
             <!-- CAMPO ADICIONADO: Telefone/WhatsApp correto do cliente -->
             <div class="form-group">
                 <label>Seu Telefone / WhatsApp:</label>

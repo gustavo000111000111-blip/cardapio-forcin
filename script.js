@@ -382,6 +382,8 @@ function adicionarMontagemAoCarrinho() {
     atualizarMontagemUI();
     atualizarCarrinhoUI();
     mostrarNotificacao('Pizza adicionada ao carrinho!');
+
+    abrirModalSugestaoBebida();
 }
 
 function adicionarDestaqueAoCarrinho(saborId, event) {
@@ -735,4 +737,32 @@ async function enviarWhatsApp() {
         alert("Aguarde no whatsapp a taxa de entrega!");
         window.open(urlWhatsAppFinal, '_blank');
     }
+
+
+    // --- FUNÇÕES DE SUGESTÃO DE BEBIDA ---
+function abrirModalSugestaoBebida() {
+    const modal = document.getElementById('modalSugestaoBebida');
+    if (modal) modal.style.display = 'flex';
+}
+
+function fecharModalSugestaoBebida() {
+    const modal = document.getElementById('modalSugestaoBebida');
+    if (modal) modal.style.display = 'none';
+}
+
+function irParaBebidas() {
+    fecharModalSugestaoBebida();
+
+    // Encontra o botão da aba de bebidas e ativa a troca de aba
+    const botoes = document.querySelectorAll('.tab-btn');
+    let btnBebidas = null;
+    botoes.forEach(b => {
+        if (b.textContent.includes('Bebidas')) btnBebidas = b;
+    });
+
+    trocarAba('bebidas', btnBebidas);
+
+    // Rola a página para o topo para que o cliente veja os produtos
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
 }
