@@ -356,6 +356,56 @@ function atualizarMontagemUI() {
 }
 
 function adicionarMontagemAoCarrinho() {
+
+    // --- FUNÇÕES DO MODAL DE BEBIDAS ---
+function abrirModalBebida() {
+    const modal = document.getElementById('modalAnuncioBebida');
+    if (modal) modal.style.display = 'flex';
+}
+
+function fecharModalBebida() {
+    const modal = document.getElementById('modalAnuncioBebida');
+    if (modal) modal.style.display = 'none';
+}
+
+function irParaBebidas() {
+    fecharModalBebida();
+    trocarAba('bebidas');
+}
+
+// --- ATUALIZAÇÃO DA FUNÇÃO ADICIONAR AO CARRINHO ---
+function adicionarMontagemAoCarrinho() {
+    if (saboresSelecionados.length === 0) {
+        alert('Selecione pelo menos 1 sabor!');
+        return;
+    }
+
+    const obsInput = document.getElementById('obsMontagem');
+    const observacao = obsInput ? obsInput.value.trim() : '';
+    const fracao = `1/${saboresSelecionados.length}`;
+    const listaSaboresTexto = saboresSelecionados.map(s => `${fracao} ${s.nome}`).join(' + ');
+    const precoFinal = calcularPrecoMontagem();
+
+    carrinho.push({
+        id: Date.now(),
+        tipo: 'pizza',
+        titulo: `Pizza ${tamanhoSelecionado.nome.split(' (')[0]}`,
+        detalhes: listaSaboresTexto,
+        preco: precoFinal,
+        quantidade: 1,
+        observacao: observacao
+    });
+
+    saboresSelecionados = [];
+    if (obsInput) obsInput.value = '';
+    atualizarMontagemUI();
+    atualizarCarrinhoUI();
+    mostrarNotificacao('Pizza adicionada ao carrinho!');
+
+    // Dispara o modal de anúncio de bebida
+    abrirModalBebida();
+}
+
     if (saboresSelecionados.length === 0) {
         alert('Selecione pelo menos 1 sabor!');
         return;
