@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:3000/api';
+const API_URL = '/api';;
 
 // Converte ID numérico para letra (ex: 1 -> A, 27 -> AA)
 function idParaCodigo(id) {

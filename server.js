@@ -1,16 +1,25 @@
 const express = require('express');
 const { Pool } = require('pg');
 const cors = require('cors');
+const path = require('path');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
+// Serve os ficheiros estáticos (HTML, CSS, JS) diretamente da raiz
+app.use(express.static(__dirname));
+
+// Configuração da porta (Render atribui dinamica ou usa 3000 localmente)
+const PORT = process.env.PORT || 3000;
+
+// Configuração do PostgreSQL compatível com o Render/Cloud
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgres://usuario:senha@localhost:5432/forcin_pizzaria'
+  connectionString: process.env.DATABASE_URL,
+  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '21072026';
 
 // Middleware de Autenticação Admin
 function authAdmin(req, res, next) {
@@ -67,72 +76,114 @@ setInterval(async () => {
 
 // Produtos
 app.get('/api/produtos', async (req, res) => {
-  const { rows } = await pool.query('SELECT * FROM produtos ORDER BY ordem ASC, id ASC');
-  res.json(rows);
+  try {
+    const { rows } = await pool.query('SELECT * FROM produtos ORDER BY ordem ASC, id ASC');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar produtos' });
+  }
 });
 
 app.post('/api/produtos', authAdmin, async (req, res) => {
-  const { nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque } = req.body;
-  const { rows } = await pool.query(
-    `INSERT INTO produtos (nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque)
-     VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-    [nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque || false]
-  );
-  res.json(rows[0]);
+  try {
+    const { nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque } = req.body;
+    const { rows } = await pool.query(
+      `INSERT INTO produtos (nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
+      [nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque || false]
+    );
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao criar produto' });
+  }
 });
 
 app.put('/api/produtos/:id', authAdmin, async (req, res) => {
-  const { id } = req.params;
-  const { nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque } = req.body;
-  const { rows } = await pool.query(
-    `UPDATE produtos SET nome=$1, categoria=$2, subcategoria=$3, descricao=$4, preco_broto=$5, preco_media=$6, preco_grande=$7, preco_familia=$8, preco_ituana=$9, preco_unico=$10, destaque=$11
-     WHERE id=$12 RETURNING *`,
-    [nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque, id]
-  );
-  res.json(rows[0]);
+  try {
+    const { id } = req.params;
+    const { nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque } = req.body;
+    const { rows } = await pool.query(
+      `UPDATE produtos SET nome=$1, categoria=$2, subcategoria=$3, descricao=$4, preco_broto=$5, preco_media=$6, preco_grande=$7, preco_familia=$8, preco_ituana=$9, preco_unico=$10, destaque=$11
+       WHERE id=$12 RETURNING *`,
+      [nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque, id]
+    );
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao atualizar produto' });
+  }
 });
 
 app.delete('/api/produtos/:id', authAdmin, async (req, res) => {
-  await pool.query('DELETE FROM produtos WHERE id = $1', [req.params.id]);
-  res.json({ success: true });
+  try {
+    await pool.query('DELETE FROM produtos WHERE id = $1', [req.params.id]);
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao apagar produto' });
+  }
 });
 
 app.put('/api/produtos/reordenar', authAdmin, async (req, res) => {
-  const { ordem } = req.body; // Array de IDs na nova ordem
-  for (let i = 0; i < ordem.length; i++) {
-    await pool.query('UPDATE produtos SET ordem = $1 WHERE id = $2', [i, ordem[i]]);
+  try {
+    const { ordem } = req.body;
+    for (let i = 0; i < ordem.length; i++) {
+      await pool.query('UPDATE produtos SET ordem = $1 WHERE id = $2', [i, ordem[i]]);
+    }
+    res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao reordenar produtos' });
   }
-  res.json({ success: true });
 });
 
 // Comandas
 app.get('/api/comandas', async (req, res) => {
-  const { rows } = await pool.query('SELECT * FROM comandas ORDER BY id DESC');
-  res.json(rows);
+  try {
+    const { rows } = await pool.query('SELECT * FROM comandas ORDER BY id DESC');
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar comandas' });
+  }
 });
 
 app.post('/api/comandas', async (req, res) => {
-  const { cliente, itens, pagamento, total, frete } = req.body;
-  const { rows } = await pool.query(
-    'INSERT INTO comandas (cliente, itens, pagamento, total, frete) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-    [JSON.stringify(cliente), JSON.stringify(itens), JSON.stringify(pagamento), total, frete || 0]
-  );
-  res.json(rows[0]);
+  try {
+    const { cliente, telefone, endereco, itens, pagamento, total, frete } = req.body;
+
+    // Formatação defensiva caso o cliente/pagamento venham como String ou Objeto
+    const objetoCliente = typeof cliente === 'object' ? cliente : { nome: cliente, telefone, endereco };
+    const objetoPagamento = typeof pagamento === 'object' ? pagamento : { metodo: pagamento || 'Não informado' };
+
+    const { rows } = await pool.query(
+      'INSERT INTO comandas (cliente, itens, pagamento, total, frete) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [JSON.stringify(objetoCliente), JSON.stringify(itens || []), JSON.stringify(objetoPagamento), total || 0, frete || 0]
+    );
+    res.json(rows[0]);
+  } catch (err) {
+    console.error('Erro ao inserir comanda:', err);
+    res.status(500).json({ error: 'Erro ao registrar comanda' });
+  }
 });
 
 app.put('/api/comandas/:id/frete', async (req, res) => {
-  const { frete } = req.body;
-  const { rows } = await pool.query(
-    'UPDATE comandas SET frete = $1 WHERE id = $2 RETURNING *',
-    [frete, req.params.id]
-  );
-  res.json(rows[0]);
+  try {
+    const { frete } = req.body;
+    const { rows } = await pool.query(
+      'UPDATE comandas SET frete = $1 WHERE id = $2 RETURNING *',
+      [frete, req.params.id]
+    );
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao atualizar frete' });
+  }
 });
 
 app.get('/api/fretes', async (req, res) => {
-  const { rows } = await pool.query('SELECT SUM(frete) as total_frete, COUNT(*) as total_comandas FROM comandas');
-  res.json(rows[0]);
+  try {
+    const { rows } = await pool.query('SELECT SUM(frete) as total_frete, COUNT(*) as total_comandas FROM comandas');
+    res.json(rows[0]);
+  } catch (err) {
+    res.status(500).json({ error: 'Erro ao buscar fretes' });
+  }
 });
 
-const PORT = process.env.PORT || 3000;
+// Inicia o servidor apenas uma vez na porta correta
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
