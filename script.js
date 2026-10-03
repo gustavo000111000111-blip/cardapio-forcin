@@ -41,16 +41,21 @@ function configurarEventosInterface() {
     if (selectEntrega) selectEntrega.addEventListener('change', toggleEndereco);
 
     const selectTipoImovel = document.getElementById('cliTipoImovel');
-    if (selectTipoImovel) selectTipoImovel.addEventListener('change', toggleCamposImovel);
+    if (selectTipoImovel) selectTipoImovel.addEventListener('change', () => {
+        toggleCamposImovel();
+        salvarDadosCliente();
+    });
+
+    const inputsSalvar = ['cliNome', 'cliTelefone', 'cliRua', 'cliBairro', 'cliComplemento', 'cliBlocoApto', 'cliCondoCasa'];
+    inputsSalvar.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.addEventListener('input', salvarDadosCliente);
+    });
 }
 
 function trocarAba(aba, btn) {
-    document.querySelectorAll('.tab-content').forEach(content => {
-        content.classList.remove('active');
-    });
-    document.querySelectorAll('.tab-btn').forEach(b => {
-        b.classList.remove('active');
-    });
+    document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
 
     const target = document.getElementById(`aba-${aba}`);
     if (target) target.classList.add('active');
@@ -63,7 +68,6 @@ function trocarAba(aba, btn) {
     }
 }
 
-// Ordenação genérica por preço crescente
 function ordenarPorPreco(lista) {
     return [...lista].sort((a, b) => {
         const precoA = a.precos ? (a.precos[tamanhoSelecionado.id] || a.precos.grande || 0) : (a.preco || 0);
@@ -80,7 +84,6 @@ async function carregarCardapioDoBanco() {
         const produtosBanco = await resposta.json();
 
         if (Array.isArray(produtosBanco) && produtosBanco.length > 0) {
-
             const pizzasBanco = produtosBanco.filter(p => p.categoria === 'pizza' && p.subcategoria !== 'promocao');
             if (pizzasBanco.length > 0) {
                 SABORES = pizzasBanco.map(p => ({
@@ -127,7 +130,7 @@ async function carregarCardapioDoBanco() {
             renderizarDestaques();
             renderizarCardapio(ordenarPorPreco(SABORES), 'cardapioContainer', 'montador');
             renderizarCardapio(ordenarPorPreco(PROMOCOES), 'promocoesContainer', 'promo');
-            renderizarCardapio(BEBIDAS, 'bebidasContainer', 'bebida'); // Mantém sem ordenar por preço
+            renderizarCardapio(BEBIDAS, 'bebidasContainer', 'bebida');
         }
     } catch (erro) {
         console.error('Erro ao conectar com a API do banco:', erro);
@@ -147,7 +150,7 @@ function atualizarBadgeStatusLoja() {
 
     if (verificarLojaAberta()) {
         badge.className = 'status-badge aberto';
-        texto.textContent = '🟢 Aberto Agora (18h às 23h30)';
+        texto.textContent = '🟢 Aberto Agora (18h às 23h)';
     } else {
         badge.className = 'status-badge fechado';
         texto.textContent = '🔴 Fechado no Momento (Abre às 18:00)';
@@ -159,7 +162,12 @@ function salvarDadosCliente() {
         nome: document.getElementById('cliNome')?.value || '',
         telefone: document.getElementById('cliTelefone')?.value || '',
         entrega: document.getElementById('cliEntrega')?.value || 'delivery',
-        tipoImovel: document.getElementById('cliTipoImovel')?.value || 'casa_rua'
+        tipoImovel: document.getElementById('cliTipoImovel')?.value || 'casa_rua',
+        rua: document.getElementById('cliRua')?.value || '',
+        bairro: document.getElementById('cliBairro')?.value || '',
+        complemento: document.getElementById('cliComplemento')?.value || '',
+        blocoApto: document.getElementById('cliBlocoApto')?.value || '',
+        condoCasa: document.getElementById('cliCondoCasa')?.value || ''
     };
     try {
         localStorage.setItem(CHAVE_LOCAL_STORAGE, JSON.stringify(dadosCliente));
@@ -181,6 +189,12 @@ function carregarDadosSalvosCliente() {
 
         toggleEndereco();
         toggleCamposImovel();
+
+        if (c.rua && document.getElementById('cliRua')) document.getElementById('cliRua').value = c.rua;
+        if (c.bairro && document.getElementById('cliBairro')) document.getElementById('cliBairro').value = c.bairro;
+        if (c.complemento && document.getElementById('cliComplemento')) document.getElementById('cliComplemento').value = c.complemento;
+        if (c.blocoApto && document.getElementById('cliBlocoApto')) document.getElementById('cliBlocoApto').value = c.blocoApto;
+        if (c.condoCasa && document.getElementById('cliCondoCasa')) document.getElementById('cliCondoCasa').value = c.condoCasa;
     } catch (e) {
         console.error("Erro ao recuperar LocalStorage:", e);
     }
@@ -300,7 +314,6 @@ function tentarAdicionarSabor(saborId) {
     }
 }
 
-// Alterado: Adiciona a pizza promocional como sabor no montador de pizzas
 function tentarAdicionarPromocao(id) {
     const promo = PROMOCOES.find(p => String(p.id) === String(id));
     if (!promo) return;
@@ -382,8 +395,6 @@ function adicionarMontagemAoCarrinho() {
     atualizarMontagemUI();
     atualizarCarrinhoUI();
     mostrarNotificacao('Pizza adicionada ao carrinho!');
-
-    abrirModalSugestaoBebida();
 }
 
 function adicionarDestaqueAoCarrinho(saborId, event) {
@@ -488,14 +499,50 @@ function atualizarCarrinhoUI() {
     `).join('');
 }
 
-function abrirCheckout() {
+// VERIFICAÇÃO DE BEBIDA AO FINALIZAR PEDIDO
+function abrirCheckout(pularVerificacaoBebida = false) {
     if (carrinho.length === 0) return;
+
+    if (!pularVerificacaoBebida) {
+        const temBebida = carrinho.some(item => item.tipo === 'bebida');
+        if (!temBebida) {
+            abrirModalSugestaoBebida();
+            return;
+        }
+    }
+
     atualizarResumoCheckout();
     document.getElementById('modalCheckout').style.display = 'flex';
 }
 
 function fecharCheckout() {
     document.getElementById('modalCheckout').style.display = 'none';
+}
+
+function abrirModalSugestaoBebida() {
+    const modal = document.getElementById('modalSugestaoBebida');
+    if (modal) modal.style.display = 'flex';
+}
+
+function fecharModalSugestaoBebida() {
+    const modal = document.getElementById('modalSugestaoBebida');
+    if (modal) modal.style.display = 'none';
+}
+
+function continuarCheckoutSemBebida() {
+    fecharModalSugestaoBebida();
+    abrirCheckout(true);
+}
+
+function irParaBebidas() {
+    fecharModalSugestaoBebida();
+    const botoes = document.querySelectorAll('.tab-btn');
+    let btnBebidas = null;
+    botoes.forEach(b => {
+        if (b.textContent.includes('Bebidas')) btnBebidas = b;
+    });
+    trocarAba('bebidas', btnBebidas);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function atualizarResumoCheckout() {
@@ -527,21 +574,21 @@ function toggleCamposImovel() {
 
     if (tipo === 'apartamento') {
         extras.innerHTML = `
-            <div class="form-group"><label>Bloco / Torre e Apto:</label><input type="text" id="cliBlocoApto" placeholder="Ex: Torre B, Apto 42"></div>
-            <div class="form-group"><label>Rua e Número:</label><input type="text" id="cliRua" placeholder="Nome da rua e número"></div>
-            <div class="form-group"><label>Bairro:</label><input type="text" id="cliBairro" placeholder="Nome do bairro"></div>
+            <div class="form-group"><label>Bloco / Torre e Apto:</label><input type="text" id="cliBlocoApto" placeholder="Ex: Torre B, Apto 42" oninput="salvarDadosCliente()"></div>
+            <div class="form-group"><label>Rua e Número:</label><input type="text" id="cliRua" placeholder="Nome da rua e número" oninput="salvarDadosCliente()"></div>
+            <div class="form-group"><label>Bairro:</label><input type="text" id="cliBairro" placeholder="Nome do bairro" oninput="salvarDadosCliente()"></div>
         `;
     } else if (tipo === 'condominio') {
         extras.innerHTML = `
-            <div class="form-group"><label>Condomínio e Casa/Lote:</label><input type="text" id="cliCondoCasa" placeholder="Ex: Res. Flores, Casa 15"></div>
-            <div class="form-group"><label>Rua e Número:</label><input type="text" id="cliRua" placeholder="Nome da rua e número"></div>
-            <div class="form-group"><label>Bairro:</label><input type="text" id="cliBairro" placeholder="Nome do bairro"></div>
+            <div class="form-group"><label>Condomínio e Casa/Lote:</label><input type="text" id="cliCondoCasa" placeholder="Ex: Res. Flores, Casa 15" oninput="salvarDadosCliente()"></div>
+            <div class="form-group"><label>Rua e Número:</label><input type="text" id="cliRua" placeholder="Nome da rua e número" oninput="salvarDadosCliente()"></div>
+            <div class="form-group"><label>Bairro:</label><input type="text" id="cliBairro" placeholder="Nome do bairro" oninput="salvarDadosCliente()"></div>
         `;
     } else {
         extras.innerHTML = `
-            <div class="form-group"><label>Rua e Número:</label><input type="text" id="cliRua" placeholder="Ex: Rua das Flores, 123"></div>
-            <div class="form-group"><label>Bairro:</label><input type="text" id="cliBairro" placeholder="Ex: Centro"></div>
-            <div class="form-group"><label>Complemento (Opcional):</label><input type="text" id="cliComplemento" placeholder="Próximo a..."></div>
+            <div class="form-group"><label>Rua e Número:</label><input type="text" id="cliRua" placeholder="Ex: Rua das Flores, 123" oninput="salvarDadosCliente()"></div>
+            <div class="form-group"><label>Bairro:</label><input type="text" id="cliBairro" placeholder="Ex: Centro" oninput="salvarDadosCliente()"></div>
+            <div class="form-group"><label>Complemento (Opcional):</label><input type="text" id="cliComplemento" placeholder="Próximo a..." oninput="salvarDadosCliente()"></div>
         `;
     }
 }
@@ -680,9 +727,7 @@ async function enviarWhatsApp() {
         pagamentoTexto += troco ? ` (Troco para R$ ${troco})` : ' (Sem troco)';
     }
 
-    if (typeof salvarDadosCliente === 'function') {
-        salvarDadosCliente();
-    }
+    salvarDadosCliente();
 
     const totalCalculado = carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
 
@@ -729,40 +774,5 @@ async function enviarWhatsApp() {
     msg += `==============================`;
 
     urlWhatsAppFinal = `https://wa.me/${TELEFONE_WHATSAPP}?text=${encodeURIComponent(msg)}`;
-
-    const modal = document.getElementById('modalAviso');
-    if (modal) {
-        modal.style.display = 'flex';
-    } else {
-        alert("Aguarde no whatsapp a taxa de entrega!");
-        window.open(urlWhatsAppFinal, '_blank');
-    }
-
-
-    // --- FUNÇÕES DE SUGESTÃO DE BEBIDA ---
-function abrirModalSugestaoBebida() {
-    const modal = document.getElementById('modalSugestaoBebida');
-    if (modal) modal.style.display = 'flex';
-}
-
-function fecharModalSugestaoBebida() {
-    const modal = document.getElementById('modalSugestaoBebida');
-    if (modal) modal.style.display = 'none';
-}
-
-function irParaBebidas() {
-    fecharModalSugestaoBebida();
-
-    // Encontra o botão da aba de bebidas e ativa a troca de aba
-    const botoes = document.querySelectorAll('.tab-btn');
-    let btnBebidas = null;
-    botoes.forEach(b => {
-        if (b.textContent.includes('Bebidas')) btnBebidas = b;
-    });
-
-    trocarAba('bebidas', btnBebidas);
-
-    // Rola a página para o topo para que o cliente veja os produtos
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-}
+    window.open(urlWhatsAppFinal, '_blank');
 }

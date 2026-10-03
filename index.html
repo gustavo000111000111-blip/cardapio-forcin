@@ -121,6 +121,22 @@
         </div>
     </div>
 
+    <!-- MODAL DE SUGESTÃO DE BEBIDA -->
+    <div class="modal-overlay" id="modalSugestaoBebida" style="display: none;">
+        <div class="modal modal-center">
+            <h3>🥤 Que tal uma bebida bem gelada?</h3>
+            <p>Você ainda não adicionou nenhuma bebida ao seu carrinho. Deseja adicionar alguma antes de finalizar o pedido?</p>
+            <div class="modal-buttons" style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+                <button class="btn-modal-option" onclick="irParaBebidas()" style="background: #27ae60; color: white; padding: 12px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold;">
+                    🥤 Ir para a aba de Bebidas
+                </button>
+                <button class="btn-close-modal" onclick="continuarCheckoutSemBebida()" style="background: #7f8c8d; color: white; padding: 10px; border: none; border-radius: 6px; cursor: pointer;">
+                    Não, continuar para o pagamento
+                </button>
+            </div>
+        </div>
+    </div>
+
     <!-- MODAL DE LIMITE -->
     <div class="modal-overlay" id="modalLimite">
         <div class="modal modal-center">
@@ -162,33 +178,17 @@
 
             <div class="form-group">
                 <label>Seu Nome:</label>
-                <input type="text" id="cliNome" placeholder="Ex: João Silva">
+                <input type="text" id="cliNome" placeholder="Ex: João Silva" oninput="salvarDadosCliente()">
             </div>
 
-            <!-- MODAL DE SUGESTÃO DE BEBIDA -->
-    <div class="modal-overlay" id="modalSugestaoBebida">
-        <div class="modal modal-center">
-            <h3>🥤 Leve também refrigerante!</h3>
-            <p>Que tal uma bebida bem gelada para acompanhar o seu pedido?</p>
-            <div class="modal-buttons">
-                <button class="btn-modal-option" onclick="irParaBebidas()">
-                    <strong>Ir para a aba Bebidas</strong>
-                    <span>Escolher refrigerantes, sumos ou águas.</span>
-                </button>
-                <button class="btn-close-modal" onclick="fecharModalSugestaoBebida()">Já adicionei / Não quero</button>
-            </div>
-        </div>
-    </div>
-
-            <!-- CAMPO ADICIONADO: Telefone/WhatsApp correto do cliente -->
             <div class="form-group">
                 <label>Seu Telefone / WhatsApp:</label>
-                <input type="text" id="cliTelefone" placeholder="Ex: (11) 99999-9999">
+                <input type="text" id="cliTelefone" placeholder="Ex: (11) 99999-9999" oninput="salvarDadosCliente()">
             </div>
 
             <div class="form-group">
                 <label>Forma de Entrega:</label>
-                <select id="cliEntrega" onchange="toggleEndereco()">
+                <select id="cliEntrega" onchange="toggleEndereco(); salvarDadosCliente();">
                     <option value="delivery">Delivery</option>
                     <option value="retirada">Retirar no Balcão</option>
                 </select>
@@ -197,7 +197,7 @@
             <div id="grupoEndereco">
                 <div class="form-group">
                     <label>Tipo de Imóvel / Endereço:</label>
-                    <select id="cliTipoImovel" onchange="toggleCamposImovel()">
+                    <select id="cliTipoImovel" onchange="toggleCamposImovel(); salvarDadosCliente();">
                         <option value="casa_rua">Casa</option>
                         <option value="apartamento">Apartamento / Prédio</option>
                         <option value="condominio">Condomínio Fechado</option>
@@ -221,7 +221,6 @@
                 </div>
             </div>
 
-            <!-- Caixa do PIX -->
             <div class="form-group" id="grupoPix" style="display: block; margin-top: 10px;">
                 <label>Chave PIX para pagamento:</label>
                 <div class="pix-box">
@@ -233,7 +232,6 @@
                 <small id="msgPixCopiado" class="msg-pix-sucesso" style="display: none;">✓ Chave PIX copiada com sucesso!</small>
             </div>
 
-            <!-- Caixa de Dinheiro / Troco -->
             <div class="form-group" id="grupoTroco" style="display: none; margin-top: 10px;">
                 <label>Troco para quanto? (Deixe em branco se não precisar)</label>
                 <input type="text" id="cliTroco" placeholder="Ex: 50, 100">
@@ -251,9 +249,9 @@
 
     <script src="script.js"></script>
 
-        <footer>
-    Desenvolvido por <a href="https://devbleed.vercel.app" target="_blank">DevBleed</a>
-</footer>
+    <footer>
+        Desenvolvido por <a href="https://devbleed.vercel.app" target="_blank">DevBleed</a>
+    </footer>
 
 </body>
 </html>
