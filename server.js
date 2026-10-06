@@ -4,13 +4,15 @@ const cors = require('cors');
 const path = require('path');
 
 const app = express();
+
+// Middlewares
 app.use(cors());
 app.use(express.json());
 
-// Serve os arquivos estáticos (HTML, CSS, JS)
+// Serve os ficheiros estáticos da pasta raiz (index.html, script.js, style.css)
 app.use(express.static(__dirname));
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 10000;
 
 // Conexão PostgreSQL (Neon.tech / Render)
 const pool = new Pool({
@@ -20,6 +22,7 @@ const pool = new Pool({
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '21072026';
 
+// Middleware de Autenticação para o Admin
 function authAdmin(req, res, next) {
   const pass = req.headers['x-admin-password'];
   if (pass !== ADMIN_PASSWORD) {
@@ -28,6 +31,7 @@ function authAdmin(req, res, next) {
   next();
 }
 
+// Inicialização e automigração do banco de dados
 async function initDB() {
   try {
     // 1. Tabela de Produtos
@@ -62,31 +66,31 @@ async function initDB() {
       );
     `);
 
-    // 3. Força a criação da coluna criado_em se a tabela já existir sem ela
+    // 3. Garante que a coluna 'criado_em' exista mesmo em tabelas antigas
     await pool.query(`
       ALTER TABLE comandas ADD COLUMN IF NOT EXISTS criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     `);
 
-    console.log('✅ Banco de dados inicializado com sucesso.');
+    console.log('✅ Banco de dados inicializado e sincronizado com sucesso.');
   } catch (err) {
-    console.error('❌ Erro na inicialização do banco:', err);
+    console.error('❌ Erro na inicialização do banco de dados:', err);
   }
 }
 
 initDB();
 
-// Limpeza automática de comandas com mais de 90 minutos
+// Limpeza automática de comandas antigas (a cada 5 minutos)
 setInterval(async () => {
   try {
     await pool.query("DELETE FROM comandas WHERE criado_em < NOW() - INTERVAL '90 minutes'");
   } catch (err) {
-    console.error('Erro na limpeza de comandas:', err);
+    console.error('Erro na limpeza automática de comandas:', err);
   }
 }, 5 * 60 * 1000);
 
 // --- ROTAS DA API ---
 
-// Buscar produtos do cardápio
+// Listar todos os produtos
 app.get('/api/produtos', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM produtos ORDER BY ordem ASC, id ASC');
@@ -97,7 +101,7 @@ app.get('/api/produtos', async (req, res) => {
   }
 });
 
-// Cadastrar Produto
+// Cadastrar novo produto (Admin)
 app.post('/api/produtos', authAdmin, async (req, res) => {
   try {
     const { nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque } = req.body;
@@ -112,7 +116,7 @@ app.post('/api/produtos', authAdmin, async (req, res) => {
   }
 });
 
-// Editar Produto
+// Atualizar produto (Admin)
 app.put('/api/produtos/:id', authAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -128,7 +132,7 @@ app.put('/api/produtos/:id', authAdmin, async (req, res) => {
   }
 });
 
-// Apagar Produto
+// Eliminar produto (Admin)
 app.delete('/api/produtos/:id', authAdmin, async (req, res) => {
   try {
     await pool.query('DELETE FROM produtos WHERE id = $1', [req.params.id]);
@@ -138,7 +142,7 @@ app.delete('/api/produtos/:id', authAdmin, async (req, res) => {
   }
 });
 
-// Reordenar Produtos
+// Reordenar produtos (Admin)
 app.put('/api/produtos/reordenar', authAdmin, async (req, res) => {
   try {
     const { ordem } = req.body;
@@ -151,7 +155,7 @@ app.put('/api/produtos/reordenar', authAdmin, async (req, res) => {
   }
 });
 
-// Buscar Comandas
+// Listar comandas
 app.get('/api/comandas', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM comandas ORDER BY id DESC');
@@ -161,7 +165,7 @@ app.get('/api/comandas', async (req, res) => {
   }
 });
 
-// Criar Comanda
+// Inserir nova comanda
 app.post('/api/comandas', async (req, res) => {
   try {
     const { cliente, telefone, endereco, itens, pagamento, total, frete } = req.body;
@@ -175,12 +179,12 @@ app.post('/api/comandas', async (req, res) => {
     );
     res.json(rows[0]);
   } catch (err) {
-    console.error('Erro ao inserir comanda:', err);
+    console.error('Erro ao registrar comanda:', err);
     res.status(500).json({ error: 'Erro ao registrar comanda' });
   }
 });
 
-// Salvar Frete
+// Atualizar frete da comanda
 app.put('/api/comandas/:id/frete', async (req, res) => {
   try {
     const { frete } = req.body;
@@ -194,9 +198,4 @@ app.put('/api/comandas/:id/frete', async (req, res) => {
   }
 });
 
-app.listen
-(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
-
-document.addEventListener('DOMContentLoaded', () => {
-    carregarCardapioDoBanco();
-});
+app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
