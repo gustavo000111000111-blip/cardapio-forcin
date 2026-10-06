@@ -4,72 +4,52 @@ async function carregarCardapioDoBanco() {
         if (!resposta.ok) return;
 
         const produtosBanco = await resposta.json();
+        console.log('Dados recebidos da API:', produtosBanco);
 
         if (Array.isArray(produtosBanco) && produtosBanco.length > 0) {
-            // Filtra pizzas tolerando variações de maiúsculas/minúsculas
-            const pizzasBanco = produtosBanco.filter(p =>
-                p.categoria && p.categoria.toLowerCase() === 'pizza' &&
-                (!p.subcategoria || p.subcategoria.toLowerCase() !== 'promocao')
-            );
+            SABORES = [];
+            PROMOCOES = [];
+            BEBIDAS = [];
 
-            if (pizzasBanco.length > 0) {
-                SABORES = pizzasBanco.map(p => ({
+            produtosBanco.forEach(p => {
+                const cat = String(p.categoria || '').trim().toLowerCase();
+                const subcat = String(p.subcategoria || '').trim().toLowerCase();
+
+                const precoBase = Number(p.preco_unico || p.preco_grande || p.preco_media || p.preco_broto || 0);
+
+                const item = {
                     id: p.id,
-                    categoria: (p.subcategoria || 'tradicional').toLowerCase(),
+                    categoria: subcat || 'tradicional',
                     nome: p.nome,
                     desc: p.descricao || '',
                     precos: {
-                        broto: Number(p.preco_broto || 0),
-                        media: Number(p.preco_media || 0),
-                        grande: Number(p.preco_grande || 0),
-                        familia: Number(p.preco_familia || 0),
-                        ituana: Number(p.preco_ituana || 0)
-                    }
-                }));
+                        broto: Number(p.preco_broto || precoBase),
+                        media: Number(p.preco_media || precoBase),
+                        grande: Number(p.preco_grande || precoBase),
+                        familia: Number(p.preco_familia || precoBase),
+                        ituana: Number(p.preco_ituana || precoBase)
+                    },
+                    preco: precoBase
+                };
+
+                if (cat === 'bebida') {
+                    BEBIDAS.push(item);
+                } else if (cat === 'promocao' || subcat === 'promocao') {
+                    PROMOCOES.push(item);
+                } else {
+                    SABORES.push(item);
+                }
+            });
+
+            // Força a renderização das listas
+            if (typeof renderizarDestaques === 'function') renderizarDestaques();
+            if (typeof renderizarCardapio === 'function') {
+                renderizarCardapio(SABORES, 'cardapioContainer', 'montador');
+                renderizarCardapio(PROMOCOES, 'promocoesContainer', 'promo');
+                renderizarCardapio(BEBIDAS, 'bebidasContainer', 'bebida');
             }
-
-            // Filtra promoções
-            const promosBanco = produtosBanco.filter(p =>
-                (p.categoria && p.categoria.toLowerCase() === 'promocao') ||
-                (p.subcategoria && p.subcategoria.toLowerCase() === 'promocao')
-            );
-
-            if (promosBanco.length > 0) {
-                PROMOCOES = promosBanco.map(p => {
-                    const preco = Number(p.preco_unico || p.preco_grande || 0);
-                    return {
-                        id: p.id,
-                        nome: p.nome,
-                        desc: p.descricao || '',
-                        precos: { broto: preco, media: preco, grande: preco, familia: preco, ituana: preco }
-                    };
-                });
-            }
-
-            // Filtra bebidas
-            const bebidasBanco = produtosBanco.filter(p =>
-                p.categoria && p.categoria.toLowerCase() === 'bebida'
-            );
-
-            if (bebidasBanco.length > 0) {
-                BEBIDAS = bebidasBanco.map(p => {
-                    const preco = Number(p.preco_unico || p.preco_grande || 0);
-                    return {
-                        id: p.id,
-                        nome: p.nome,
-                        desc: p.descricao || '',
-                        precos: { broto: preco, media: preco, grande: preco, familia: preco, ituana: preco }
-                    };
-                });
-            }
-
-            // Renderização no DOM
-            renderizarDestaques();
-            renderizarCardapio(ordenarPorPreco(SABORES), 'cardapioContainer', 'montador');
-            renderizarCardapio(ordenarPorPreco(PROMOCOES), 'promocoesContainer', 'promo');
-            renderizarCardapio(BEBIDAS, 'bebidasContainer', 'bebida');
         }
     } catch (erro) {
-        console.error('Erro ao conectar com a API do banco:', erro);
+        console.error('Erro ao processar cardápio:', erro);
     }
 }
