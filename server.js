@@ -7,11 +7,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve os ficheiros estáticos (HTML, CSS, JS) diretamente da raiz
+// Serve os arquivos estáticos (HTML, CSS, JS)
 app.use(express.static(__dirname));
 
 const PORT = process.env.PORT || 3000;
 
+// Conexão PostgreSQL (Neon.tech / Render)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
@@ -28,36 +29,51 @@ function authAdmin(req, res, next) {
 }
 
 async function initDB() {
-  await pool.query(`
-    CREATE TABLE IF NOT EXISTS produtos (
-      id SERIAL PRIMARY KEY,
-      nome VARCHAR(100) NOT NULL,
-      categoria VARCHAR(50) NOT NULL,
-      subcategoria VARCHAR(50),
-      descricao TEXT,
-      preco_broto DECIMAL(10,2),
-      preco_media DECIMAL(10,2),
-      preco_grande DECIMAL(10,2),
-      preco_familia DECIMAL(10,2),
-      preco_ituana DECIMAL(10,2),
-      preco_unico DECIMAL(10,2),
-      ordem INT DEFAULT 0,
-      destaque BOOLEAN DEFAULT false
-    );
+  try {
+    // 1. Tabela de Produtos
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS produtos (
+        id SERIAL PRIMARY KEY,
+        nome VARCHAR(100) NOT NULL,
+        categoria VARCHAR(50) NOT NULL,
+        subcategoria VARCHAR(50),
+        descricao TEXT,
+        preco_broto DECIMAL(10,2),
+        preco_media DECIMAL(10,2),
+        preco_grande DECIMAL(10,2),
+        preco_familia DECIMAL(10,2),
+        preco_ituana DECIMAL(10,2),
+        preco_unico DECIMAL(10,2),
+        ordem INT DEFAULT 0,
+        destaque BOOLEAN DEFAULT false
+      );
+    `);
 
-    CREATE TABLE IF NOT EXISTS comandas (
-      id SERIAL PRIMARY KEY,
-      cliente JSONB NOT NULL,
-      itens JSONB NOT NULL,
-      pagamento JSONB NOT NULL,
-      total DECIMAL(10,2) NOT NULL,
-      frete DECIMAL(10,2) DEFAULT 0.00,
-      criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+    // 2. Tabela de Comandas
+    await pool.query(`
+      CREATE TABLE IF NOT EXISTS comandas (
+        id SERIAL PRIMARY KEY,
+        cliente JSONB NOT NULL,
+        itens JSONB NOT NULL,
+        pagamento JSONB NOT NULL,
+        total DECIMAL(10,2) NOT NULL,
+        frete DECIMAL(10,2) DEFAULT 0.00,
+        criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // 3. Força a criação da coluna criado_em se a tabela já existir sem ela
+    await pool.query(`
+      ALTER TABLE comandas ADD COLUMN IF NOT EXISTS criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+    `);
+
+    console.log('✅ Banco de dados inicializado com sucesso.');
+  } catch (err) {
+    console.error('❌ Erro na inicialização do banco:', err);
+  }
 }
 
-initDB().catch(console.error);
+initDB();
 
 // Limpeza automática de comandas com mais de 90 minutos
 setInterval(async () => {
@@ -70,18 +86,18 @@ setInterval(async () => {
 
 // --- ROTAS DA API ---
 
-// 1. ROTA GET PRODUTOS (Essencial para carregar o cardápio)
+// Buscar produtos do cardápio
 app.get('/api/produtos', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM produtos ORDER BY ordem ASC, id ASC');
     res.json(rows);
   } catch (err) {
     console.error('Erro ao buscar produtos:', err);
-    res.status(500).json({ error: 'Erro ao buscar produtos do cardápio' });
+    res.status(500).json({ error: 'Erro ao buscar produtos' });
   }
 });
 
-// 2. ROTAS DE ADMIN PARA PRODUTOS
+// Cadastrar Produto
 app.post('/api/produtos', authAdmin, async (req, res) => {
   try {
     const { nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque } = req.body;
@@ -96,6 +112,7 @@ app.post('/api/produtos', authAdmin, async (req, res) => {
   }
 });
 
+// Editar Produto
 app.put('/api/produtos/:id', authAdmin, async (req, res) => {
   try {
     const { id } = req.params;
@@ -111,6 +128,7 @@ app.put('/api/produtos/:id', authAdmin, async (req, res) => {
   }
 });
 
+// Apagar Produto
 app.delete('/api/produtos/:id', authAdmin, async (req, res) => {
   try {
     await pool.query('DELETE FROM produtos WHERE id = $1', [req.params.id]);
@@ -120,6 +138,7 @@ app.delete('/api/produtos/:id', authAdmin, async (req, res) => {
   }
 });
 
+// Reordenar Produtos
 app.put('/api/produtos/reordenar', authAdmin, async (req, res) => {
   try {
     const { ordem } = req.body;
@@ -132,7 +151,7 @@ app.put('/api/produtos/reordenar', authAdmin, async (req, res) => {
   }
 });
 
-// 3. ROTAS DE COMANDAS
+// Buscar Comandas
 app.get('/api/comandas', async (req, res) => {
   try {
     const { rows } = await pool.query('SELECT * FROM comandas ORDER BY id DESC');
@@ -142,6 +161,7 @@ app.get('/api/comandas', async (req, res) => {
   }
 });
 
+// Criar Comanda
 app.post('/api/comandas', async (req, res) => {
   try {
     const { cliente, telefone, endereco, itens, pagamento, total, frete } = req.body;
@@ -160,6 +180,7 @@ app.post('/api/comandas', async (req, res) => {
   }
 });
 
+// Salvar Frete
 app.put('/api/comandas/:id/frete', async (req, res) => {
   try {
     const { frete } = req.body;
@@ -170,15 +191,6 @@ app.put('/api/comandas/:id/frete', async (req, res) => {
     res.json(rows[0]);
   } catch (err) {
     res.status(500).json({ error: 'Erro ao atualizar frete' });
-  }
-});
-
-app.get('/api/fretes', async (req, res) => {
-  try {
-    const { rows } = await pool.query('SELECT SUM(frete) as total_frete, COUNT(*) as total_comandas FROM comandas');
-    res.json(rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao buscar fretes' });
   }
 });
 

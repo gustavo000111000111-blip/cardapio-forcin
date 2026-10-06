@@ -63,6 +63,7 @@ async function carregarCardapioDoBanco() {
                 });
             }
 
+            // Renderização no DOM
             renderizarDestaques();
             renderizarCardapio(ordenarPorPreco(SABORES), 'cardapioContainer', 'montador');
             renderizarCardapio(ordenarPorPreco(PROMOCOES), 'promocoesContainer', 'promo');
