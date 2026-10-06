@@ -10,10 +10,8 @@ app.use(express.json());
 // Serve os ficheiros estáticos (HTML, CSS, JS) diretamente da raiz
 app.use(express.static(__dirname));
 
-// Configuração da porta (Render atribui dinamica ou usa 3000 localmente)
 const PORT = process.env.PORT || 3000;
 
-// Configuração do PostgreSQL compatível com o Render/Cloud
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
@@ -21,7 +19,6 @@ const pool = new Pool({
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '21072026';
 
-// Middleware de Autenticação Admin
 function authAdmin(req, res, next) {
   const pass = req.headers['x-admin-password'];
   if (pass !== ADMIN_PASSWORD) {
@@ -30,7 +27,6 @@ function authAdmin(req, res, next) {
   next();
 }
 
-// Inicialização do Banco de Dados
 async function initDB() {
   await pool.query(`
     CREATE TABLE IF NOT EXISTS produtos (
@@ -74,25 +70,18 @@ setInterval(async () => {
 
 // --- ROTAS DA API ---
 
-// Produtos
-app.post('/api/comandas', async (req, res) => {
+// 1. ROTA GET PRODUTOS (Essencial para carregar o cardápio)
+app.get('/api/produtos', async (req, res) => {
   try {
-    const { cliente, telefone, endereco, itens, pagamento, total, frete } = req.body;
-
-    // Normalização defensiva dos objetos JSONB
-    const objetoCliente = typeof cliente === 'object' ? cliente : { nome: cliente || 'Cliente', telefone, endereco };
-    const objetoPagamento = typeof pagamento === 'object' ? pagamento : { metodo: pagamento || 'Não informado' };
-
-    const { rows } = await pool.query(
-      'INSERT INTO comandas (cliente, itens, pagamento, total, frete) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [JSON.stringify(objetoCliente), JSON.stringify(itens || []), JSON.stringify(objetoPagamento), total || 0, frete || 0]
-    );
-    res.json(rows[0]);
+    const { rows } = await pool.query('SELECT * FROM produtos ORDER BY ordem ASC, id ASC');
+    res.json(rows);
   } catch (err) {
-    console.error('Erro ao inserir comanda:', err);
-    res.status(500).json({ error: 'Erro ao registrar comanda' });
+    console.error('Erro ao buscar produtos:', err);
+    res.status(500).json({ error: 'Erro ao buscar produtos do cardápio' });
   }
 });
+
+// 2. ROTAS DE ADMIN PARA PRODUTOS
 app.post('/api/produtos', authAdmin, async (req, res) => {
   try {
     const { nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque } = req.body;
@@ -143,26 +132,13 @@ app.put('/api/produtos/reordenar', authAdmin, async (req, res) => {
   }
 });
 
-
-
-app.get('/api/produtos', async (req, res) => {
+// 3. ROTAS DE COMANDAS
+app.get('/api/comandas', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM produtos ORDER BY ordem ASC, id ASC');
+    const { rows } = await pool.query('SELECT * FROM comandas ORDER BY id DESC');
     res.json(rows);
   } catch (err) {
-    console.error('Erro ao buscar produtos:', err);
-    res.status(500).json({ error: 'Erro ao buscar produtos do cardápio' });
-  }
-});
-
-// ✅ Rota para buscar todos os produtos cadastrados no banco de dados
-app.get('/api/produtos', async (req, res) => {
-  try {
-    const { rows } = await pool.query('SELECT * FROM produtos ORDER BY ordem ASC, id ASC');
-    res.json(rows);
-  } catch (err) {
-    console.error('Erro ao buscar produtos:', err);
-    res.status(500).json({ error: 'Erro ao buscar produtos do cardápio' });
+    res.status(500).json({ error: 'Erro ao buscar comandas' });
   }
 });
 
@@ -170,8 +146,7 @@ app.post('/api/comandas', async (req, res) => {
   try {
     const { cliente, telefone, endereco, itens, pagamento, total, frete } = req.body;
 
-    // Formatação defensiva caso o cliente/pagamento venham como String ou Objeto
-    const objetoCliente = typeof cliente === 'object' ? cliente : { nome: cliente, telefone, endereco };
+    const objetoCliente = typeof cliente === 'object' ? cliente : { nome: cliente || 'Cliente', telefone, endereco };
     const objetoPagamento = typeof pagamento === 'object' ? pagamento : { metodo: pagamento || 'Não informado' };
 
     const { rows } = await pool.query(
@@ -207,5 +182,4 @@ app.get('/api/fretes', async (req, res) => {
   }
 });
 
-// Inicia o servidor apenas uma vez na porta correta
 app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
