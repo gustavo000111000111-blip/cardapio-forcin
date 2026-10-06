@@ -143,6 +143,15 @@ app.put('/api/produtos/reordenar', authAdmin, async (req, res) => {
   }
 });
 
+app.get('/api/produtos', async (req, res) => {
+  try {
+    const { rows } = await pool.query('SELECT * FROM produtos ORDER BY ordem ASC, id ASC');
+    res.json(rows);
+  } catch (err) {
+    console.error('Erro ao buscar produtos:', err);
+    res.status(500).json({ error: 'Erro ao buscar produtos do cardápio' });
+  }
+});
 
 app.post('/api/comandas', async (req, res) => {
   try {

@@ -733,32 +733,32 @@ async function enviarWhatsApp() {
 
     try {
         await // Monte os objetos de cliente e pagamento estruturados
-const objetoCliente = {
-    nome: nome,
-    telefone: telefoneCliente,
-    endereco: enderecoTexto,
-    tipo: entrega === 'delivery' ? 'Delivery' : 'Retirada'
-};
+// ✅ Bloco corrigido no script.js:
+    const objetoCliente = {
+        nome: nome,
+        telefone: telefoneCliente,
+        endereco: enderecoTexto,
+        tipo: entrega === 'delivery' ? 'Delivery' : 'Retirada'
+    };
 
-const objetoPagamento = {
-    metodo: pagamentoTexto
-};
+    const objetoPagamento = {
+        metodo: pagamentoTexto
+    };
 
-try {
-    await fetch('/api/comandas', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-            cliente: objetoCliente,
-            itens: carrinho,
-            pagamento: objetoPagamento,
-            total: totalCalculado,
-            frete: 0
-        })
-    });
-} catch (e) {
-    console.error('Erro ao registrar comanda no servidor:', e);
-}
+    try {
+        await fetch('/api/comandas', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                cliente: objetoCliente,
+                itens: carrinho,
+                pagamento: objetoPagamento,
+                total: totalCalculado,
+                frete: 0
+            })
+        });
+    } catch (e) {
+        console.error('Erro ao registrar comanda no servidor:', e);
     }
 
     let msg = `==============================\n`;
