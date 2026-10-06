@@ -75,15 +75,24 @@ setInterval(async () => {
 // --- ROTAS DA API ---
 
 // Produtos
-app.get('/api/produtos', async (req, res) => {
+app.post('/api/comandas', async (req, res) => {
   try {
-    const { rows } = await pool.query('SELECT * FROM produtos ORDER BY ordem ASC, id ASC');
-    res.json(rows);
+    const { cliente, telefone, endereco, itens, pagamento, total, frete } = req.body;
+
+    // Normalização defensiva dos objetos JSONB
+    const objetoCliente = typeof cliente === 'object' ? cliente : { nome: cliente || 'Cliente', telefone, endereco };
+    const objetoPagamento = typeof pagamento === 'object' ? pagamento : { metodo: pagamento || 'Não informado' };
+
+    const { rows } = await pool.query(
+      'INSERT INTO comandas (cliente, itens, pagamento, total, frete) VALUES ($1, $2, $3, $4, $5) RETURNING *',
+      [JSON.stringify(objetoCliente), JSON.stringify(itens || []), JSON.stringify(objetoPagamento), total || 0, frete || 0]
+    );
+    res.json(rows[0]);
   } catch (err) {
-    res.status(500).json({ error: 'Erro ao buscar produtos' });
+    console.error('Erro ao inserir comanda:', err);
+    res.status(500).json({ error: 'Erro ao registrar comanda' });
   }
 });
-
 app.post('/api/produtos', authAdmin, async (req, res) => {
   try {
     const { nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque } = req.body;
@@ -134,15 +143,6 @@ app.put('/api/produtos/reordenar', authAdmin, async (req, res) => {
   }
 });
 
-// Comandas
-app.get('/api/comandas', async (req, res) => {
-  try {
-    const { rows } = await pool.query('SELECT * FROM comandas ORDER BY id DESC');
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao buscar comandas' });
-  }
-});
 
 app.post('/api/comandas', async (req, res) => {
   try {

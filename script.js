@@ -732,19 +732,33 @@ async function enviarWhatsApp() {
     const totalCalculado = carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
 
     try {
-        await fetch('/api/comandas', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                cliente: nome,
-                telefone: telefoneCliente,
-                endereco: enderecoTexto,
-                total: totalCalculado,
-                itens: carrinho
-            })
-        });
-    } catch (e) {
-        console.error('Erro ao registrar comanda no servidor:', e);
+        await // Monte os objetos de cliente e pagamento estruturados
+const objetoCliente = {
+    nome: nome,
+    telefone: telefoneCliente,
+    endereco: enderecoTexto,
+    tipo: entrega === 'delivery' ? 'Delivery' : 'Retirada'
+};
+
+const objetoPagamento = {
+    metodo: pagamentoTexto
+};
+
+try {
+    await fetch('/api/comandas', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            cliente: objetoCliente,
+            itens: carrinho,
+            pagamento: objetoPagamento,
+            total: totalCalculado,
+            frete: 0
+        })
+    });
+} catch (e) {
+    console.error('Erro ao registrar comanda no servidor:', e);
+}
     }
 
     let msg = `==============================\n`;

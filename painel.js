@@ -43,13 +43,13 @@ function renderizarComandas(comandas) {
         const valorTotalFinal = valorItens + valorFrete;
 
         // Tratamento do cliente (Objeto ou String JSON)
-        const cliente = typeof comanda.cliente === 'string' ? JSON.parse(comanda.cliente) : (comanda.cliente || {});
-        const nomeCliente = cliente.nome || 'Cliente';
-        const telCliente = cliente.telefone || 'Não informado';
+       const cliente = typeof comanda.cliente === 'string'
+    ? JSON.parse(comanda.cliente)
+    : (comanda.cliente || {});
 
-        let enderecoFormatado = cliente.endereco
-            ? `${cliente.endereco}${cliente.numero ? ', ' + cliente.numero : ''}${cliente.bairro ? ' - ' + cliente.bairro : ''} (${cliente.tipo || 'Casa'})`
-            : (comanda.endereco || 'Retirada no Balcão');
+const nomeCliente = cliente.nome || 'Cliente';
+const telCliente = cliente.telefone || 'Não informado';
+const enderecoFormatado = cliente.endereco || comanda.endereco || 'Retirada no Balcão';
 
         // Tratamento dos itens
         const itens = typeof comanda.itens === 'string' ? JSON.parse(comanda.itens) : (comanda.itens || []);
