@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Fretes - Forcin Pizzaria</title>
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background-color: #f4f6f8; margin: 0; padding: 20px; }
+        h1 { text-align: center; color: #333; margin-bottom: 20px; }
+
+        .painel-fretes-container { max-width: 900px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
+        
+        .nav-link { display: inline-block; margin-bottom: 20px; color: #3498db; text-decoration: none; font-weight: bold; }
+        .nav-link:hover { text-decoration: underline; }
+
+        .frete-summary { display: flex; gap: 20px; margin-bottom: 20px; }
+        .frete-card { background: #f8f9fa; padding: 15px 20px; border-radius: 6px; flex: 1; text-align: center; border: 1px solid #e9ecef; }
+        .frete-card span { font-size: 0.9em; color: #6c757d; font-weight: 500; }
+        .frete-card strong { display: block; font-size: 1.6em; color: #27ae60; margin-top: 5px; }
+
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.95em; }
+        th { background: #f8f9fa; color: #555; }
+        tr:hover { background-color: #fcfcfc; }
+    </style>
+</head>
+<body>
+
+    <div class="painel-fretes-container">
+        <a href="painel.html" class="nav-link">← Voltar ao Painel de Comandas</a>
+        <h1>📦 Painel de Armazenamento de Fretes</h1>
+
+        <div class="frete-summary">
+            <div class="frete-card">
+                <span>Total em Fretes</span>
+                <strong id="totalFretesAcumulado">R$ 0,00</strong>
+            </div>
+            <div class="frete-card">
+                <span>Entregas Registradas</span>
+                <strong id="qtdEntregasFrete">0</strong>
+            </div>
+        </div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Comanda</th>
+                    <th>Cliente</th>
+                    <th>Valor Frete</th>
+                    <th>Total Pedido</th>
+                    <th>Data/Hora</th>
+                </tr>
+            </thead>
+            <tbody id="tabelaFretes">
+                <tr><td colspan="5" style="text-align:center;">Carregando fretes...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <script src="fretes.js"></script>
+
+</body>
+</html>
