@@ -13,7 +13,7 @@ async function carregarProdutosAdmin() {
 }
 
 function renderizarTabelaAdmin(produtos) {
-  const tbody = document.getElementById('tabela-produtos');
+const tbody = document.getElementById('tabelaProdutos');
   tbody.innerHTML = produtos.map((p, index) => `
     <tr>
       <td>${p.nome}</td>
