@@ -1,201 +1,207 @@
+const dns = require('dns');
+dns.setDefaultResultOrder('ipv4first');
+
 const express = require('express');
-const { Pool } = require('pg');
-const cors = require('cors');
 const path = require('path');
+const cors = require('cors');
+const { Pool } = require('pg');
 
 const app = express();
+const PORT = process.env.PORT || 3000;
+const ADMIN_PASSWORD = '21072026';
 
-// Middlewares
-app.use(cors());
 app.use(express.json());
+app.use(cors());
+app.use(express.static(path.join(__dirname)));
 
-// Serve os ficheiros estáticos da pasta raiz
-app.use(express.static(__dirname));
-
-const PORT = process.env.PORT || 10000;
-
-// Conexão PostgreSQL (Neon.tech / Render / Supabase Direct)
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
+    connectionString: process.env.DATABASE_URL,
+    ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
 });
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || '21072026';
+pool.connect((err) => {
+    if (err) {
+        console.error('Erro ao conectar ao PostgreSQL:', err.message);
+    } else {
+        console.log('Conectado ao PostgreSQL com sucesso.');
+        criarTabelas();
+    }
+});
 
-// Middleware de Autenticação para o Admin
-function authAdmin(req, res, next) {
-  const pass = req.headers['x-admin-password'];
-  if (pass !== ADMIN_PASSWORD) {
-    return res.status(401).json({ error: 'Acesso não autorizado' });
-  }
-  next();
+async function criarTabelas() {
+    try {
+        await pool.query(`CREATE TABLE IF NOT EXISTS produtos (
+            id SERIAL PRIMARY KEY,
+            categoria VARCHAR(50),
+            subcategoria VARCHAR(50),
+            nome VARCHAR(100),
+            descricao TEXT,
+            preco_broto DOUBLE PRECISION,
+            preco_media DOUBLE PRECISION,
+            preco_grande DOUBLE PRECISION,
+            preco_familia DOUBLE PRECISION,
+            preco_ituana DOUBLE PRECISION,
+            preco_unico DOUBLE PRECISION,
+            ordem INT DEFAULT 0
+        )`);
+
+        await pool.query(`CREATE TABLE IF NOT EXISTS comandas (
+            id SERIAL PRIMARY KEY,
+            cliente TEXT,
+            telefone VARCHAR(20),
+            endereco TEXT,
+            total DOUBLE PRECISION,
+            frete DOUBLE PRECISION DEFAULT 0,
+            itens TEXT,
+            timestamp BIGINT,
+            criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )`);
+
+        await pool.query(`ALTER TABLE comandas ADD COLUMN IF NOT EXISTS frete DOUBLE PRECISION DEFAULT 0`);
+        await pool.query(`ALTER TABLE comandas ADD COLUMN IF NOT EXISTS criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
+    } catch (err) {
+        console.error('Erro ao criar tabelas:', err.message);
+    }
 }
 
-// Inicialização e automigração do banco de dados
-async function initDB() {
-  try {
-    // 1. Tabela de Produtos
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS produtos (
-        id SERIAL PRIMARY KEY,
-        nome VARCHAR(100) NOT NULL,
-        categoria VARCHAR(50) NOT NULL,
-        subcategoria VARCHAR(50),
-        descricao TEXT,
-        preco_broto DECIMAL(10,2),
-        preco_media DECIMAL(10,2),
-        preco_grande DECIMAL(10,2),
-        preco_familia DECIMAL(10,2),
-        preco_ituana DECIMAL(10,2),
-        preco_unico DECIMAL(10,2),
-        ordem INT DEFAULT 0,
-        destaque BOOLEAN DEFAULT false
-      );
-    `);
-
-    // 2. Tabela de Comandas
-    await pool.query(`
-      CREATE TABLE IF NOT EXISTS comandas (
-        id SERIAL PRIMARY KEY,
-        cliente JSONB NOT NULL,
-        itens JSONB NOT NULL,
-        pagamento JSONB NOT NULL,
-        total DECIMAL(10,2) NOT NULL,
-        frete DECIMAL(10,2) DEFAULT 0.00,
-        criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      );
-    `);
-
-    // 3. Garante que a coluna 'criado_em' exista
-    await pool.query(`
-      ALTER TABLE comandas ADD COLUMN IF NOT EXISTS criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
-    `);
-
-    console.log('✅ Banco de dados inicializado e sincronizado com sucesso.');
-  } catch (err) {
-    console.error('❌ Erro na inicialização do banco de dados:', err);
-  }
-}
-
-initDB();
-
-// Limpeza automática de comandas antigas (a cada 5 minutos)
+// Limpeza automática de comandas com mais de 90 minutos
 setInterval(async () => {
-  try {
-    await pool.query("DELETE FROM comandas WHERE criado_em < NOW() - INTERVAL '90 minutes'");
-  } catch (err) {
-    console.error('Erro na limpeza automática de comandas:', err);
-  }
-}, 5 * 60 * 1000);
+    const limiteTempo = Date.now() - (90 * 60 * 1000);
+    try {
+        await pool.query(`DELETE FROM comandas WHERE timestamp < $1`, [limiteTempo]);
+    } catch (err) {
+        console.error('Erro ao limpar comandas antigas:', err.message);
+    }
+}, 60000);
 
 // --- ROTAS DA API ---
 
-// Listar todos os produtos
 app.get('/api/produtos', async (req, res) => {
-  try {
-    const { rows } = await pool.query('SELECT * FROM produtos ORDER BY ordem ASC, id ASC');
-    res.json(rows);
-  } catch (err) {
-    console.error('Erro ao buscar produtos:', err);
-    res.status(500).json({ error: 'Erro ao buscar produtos' });
-  }
-});
-
-// Cadastrar novo produto (Admin)
-app.post('/api/produtos', authAdmin, async (req, res) => {
-  try {
-    const { nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque } = req.body;
-    const { rows } = await pool.query(
-      `INSERT INTO produtos (nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11) RETURNING *`,
-      [nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque || false]
-    );
-    res.json(rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao criar produto' });
-  }
-});
-
-// Atualizar produto (Admin)
-app.put('/api/produtos/:id', authAdmin, async (req, res) => {
-  try {
-    const { id } = req.params;
-    const { nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque } = req.body;
-    const { rows } = await pool.query(
-      `UPDATE produtos SET nome=$1, categoria=$2, subcategoria=$3, descricao=$4, preco_broto=$5, preco_media=$6, preco_grande=$7, preco_familia=$8, preco_ituana=$9, preco_unico=$10, destaque=$11
-       WHERE id=$12 RETURNING *`,
-      [nome, categoria, subcategoria, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, destaque, id]
-    );
-    res.json(rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao atualizar produto' });
-  }
-});
-
-// Eliminar produto (Admin)
-app.delete('/api/produtos/:id', authAdmin, async (req, res) => {
-  try {
-    await pool.query('DELETE FROM produtos WHERE id = $1', [req.params.id]);
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao apagar produto' });
-  }
-});
-
-// Reordenar produtos (Admin)
-app.put('/api/produtos/reordenar', authAdmin, async (req, res) => {
-  try {
-    const { ordem } = req.body;
-    for (let i = 0; i < ordem.length; i++) {
-      await pool.query('UPDATE produtos SET ordem = $1 WHERE id = $2', [i, ordem[i]]);
+    try {
+        const { rows } = await pool.query('SELECT * FROM produtos ORDER BY ordem ASC, id ASC');
+        res.json(rows);
+    } catch (err) {
+        res.status(500).json({ erro: err.message });
     }
-    res.json({ success: true });
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao reordenar produtos' });
-  }
 });
 
-// Listar comandas
+app.post('/api/produtos', verificarAdmin, async (req, res) => {
+    const { categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico } = req.body;
+    try {
+        const { rows } = await pool.query(
+            `INSERT INTO produtos (categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+            [categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico]
+        );
+        res.json(rows[0]);
+    } catch (err) {
+        res.status(500).json({ erro: err.message });
+    }
+});
+
+app.put('/api/produtos/:id', verificarAdmin, async (req, res) => {
+    const { id } = req.params;
+    const { categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico } = req.body;
+    try {
+        const { rows } = await pool.query(
+            `UPDATE produtos SET categoria=$1, subcategoria=$2, nome=$3, descricao=$4, preco_broto=$5, preco_media=$6, preco_grande=$7, preco_familia=$8, preco_ituana=$9, preco_unico=$10 WHERE id=$1`,
+            [categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, id]
+        );
+        res.json({ sucesso: true });
+    } catch (err) {
+        res.status(500).json({ erro: err.message });
+    }
+});
+
+app.delete('/api/produtos/:id', verificarAdmin, async (req, res) => {
+    const { id } = req.params;
+    try {
+        await pool.query('DELETE FROM produtos WHERE id = $1', [id]);
+        res.json({ sucesso: true });
+    } catch (err) {
+        res.status(500).json({ erro: err.message });
+    }
+});
+
+app.put('/api/produtos/reordenar', verificarAdmin, async (req, res) => {
+    const { itens, ordem } = req.body;
+    try {
+        const lista = itens || ordem;
+        if (Array.isArray(lista)) {
+            for (let item of lista) {
+                if (typeof item === 'object' && item.id && item.ordem !== undefined) {
+                    await pool.query('UPDATE produtos SET ordem = $1 WHERE id = $2', [item.ordem, item.id]);
+                } else {
+                    // Compatibilidade caso mande apenas array de IDs
+                    const index = lista.indexOf(item);
+                    await pool.query('UPDATE produtos SET ordem = $1 WHERE id = $2', [index, item]);
+                }
+            }
+        }
+        res.json({ sucesso: true });
+    } catch (err) {
+        res.status(500).json({ erro: err.message });
+    }
+});
+
 app.get('/api/comandas', async (req, res) => {
-  try {
-    const { rows } = await pool.query('SELECT * FROM comandas ORDER BY id DESC');
-    res.json(rows);
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao buscar comandas' });
-  }
+    const limiteTempo = Date.now() - (90 * 60 * 1000);
+    try {
+        await pool.query(`DELETE FROM comandas WHERE timestamp < $1`, [limiteTempo]);
+        const { rows } = await pool.query("SELECT * FROM comandas ORDER BY timestamp DESC");
+        const formatadas = rows.map(c => ({
+            ...c,
+            frete: Number(c.frete || 0),
+            itens: typeof c.itens === 'string' ? JSON.parse(c.itens || '[]') : c.itens,
+            data: parseInt(c.timestamp || Date.now())
+        }));
+        res.json(formatadas);
+    } catch (err) {
+        res.status(500).json({ erro: err.message });
+    }
 });
 
-// Inserir nova comanda
 app.post('/api/comandas', async (req, res) => {
-  try {
-    const { cliente, telefone, endereco, itens, pagamento, total, frete } = req.body;
+    const { cliente, telefone, endereco, total, itens } = req.body;
+    const timestamp = Date.now();
 
-    const objetoCliente = typeof cliente === 'object' ? cliente : { nome: cliente || 'Cliente', telefone, endereco };
-    const objetoPagamento = typeof pagamento === 'object' ? pagamento : { metodo: pagamento || 'Não informado' };
+    // Assegura compatibilidade salvando o cliente de forma robusta
+    const clienteObj = typeof cliente === 'object' ? JSON.stringify(cliente) : JSON.stringify({ nome: cliente, telefone, endereco });
 
-    const { rows } = await pool.query(
-      'INSERT INTO comandas (cliente, itens, pagamento, total, frete) VALUES ($1, $2, $3, $4, $5) RETURNING *',
-      [JSON.stringify(objetoCliente), JSON.stringify(itens || []), JSON.stringify(objetoPagamento), total || 0, frete || 0]
-    );
-    res.json(rows[0]);
-  } catch (err) {
-    console.error('Erro ao registrar comanda:', err);
-    res.status(500).json({ error: 'Erro ao registrar comanda' });
-  }
+    const query = `INSERT INTO comandas (cliente, telefone, endereco, total, frete, itens, timestamp) VALUES ($1, $2, $3, $4, 0, $5, $6) RETURNING id`;
+    try {
+        const { rows } = await pool.query(query, [clienteObj, telefone || '', endereco || '', total, JSON.stringify(itens), timestamp]);
+        res.json({ id: rows[0].id, mensagem: 'Comanda criada com sucesso!' });
+    } catch (err) {
+        res.status(500).json({ erro: err.message });
+    }
 });
 
-// Atualizar frete da comanda
 app.put('/api/comandas/:id/frete', async (req, res) => {
-  try {
+    const { id } = req.params;
     const { frete } = req.body;
-    const { rows } = await pool.query(
-      'UPDATE comandas SET frete = $1 WHERE id = $2 RETURNING *',
-      [frete, req.params.id]
-    );
-    res.json(rows[0]);
-  } catch (err) {
-    res.status(500).json({ error: 'Erro ao atualizar frete' });
-  }
+    const valorFrete = parseFloat(frete) || 0;
+    try {
+        await pool.query('UPDATE comandas SET frete = $1 WHERE id = $2', [valorFrete, id]);
+        res.json({ sucesso: true, mensagem: 'Frete salvo com sucesso!' });
+    } catch (err) {
+        res.status(500).json({ erro: err.message });
+    }
 });
 
-app.listen(PORT, () => console.log(`Servidor rodando na porta ${PORT}`));
+function verificarAdmin(req, res, next) {
+    const senha = req.headers['x-admin-password'];
+    if (senha === ADMIN_PASSWORD) {
+        next();
+    } else {
+        res.status(403).json({ erro: 'Acesso negado.' });
+    }
+}
+
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'index.html')));
+app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'admin.html')));
+app.get('/painel.html', (req, res) => res.sendFile(path.join(__dirname, 'painel.html')));
+app.get('/fretes.html', (req, res) => res.sendFile(path.join(__dirname, 'fretes.html')));
+
+app.listen(PORT, () => {
+    console.log(`Servidor rodando em http://localhost:${PORT}`);
+});

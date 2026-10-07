@@ -1,6 +1,5 @@
-const API_URL = '/api';;
+const API_URL = '/api';
 
-// Converte ID numérico para letra (ex: 1 -> A, 27 -> AA)
 function idParaCodigo(id) {
     let n = parseInt(id, 10);
     if (isNaN(n) || n <= 0) return id;
@@ -16,6 +15,7 @@ function idParaCodigo(id) {
 async function carregarComandas() {
     try {
         const resposta = await fetch(`${API_URL}/comandas`);
+        if (!resposta.ok) return;
         const comandas = await resposta.json();
         renderizarComandas(comandas);
         renderizarPainelFretes(comandas);
@@ -42,30 +42,33 @@ function renderizarComandas(comandas) {
         const valorItens = Number(comanda.total || 0);
         const valorTotalFinal = valorItens + valorFrete;
 
-        // Tratamento do cliente (Objeto ou String JSON)
-       const cliente = typeof comanda.cliente === 'string'
-    ? JSON.parse(comanda.cliente)
-    : (comanda.cliente || {});
+        // Tratamento seguro do objeto cliente
+        let cliente = {};
+        try {
+            cliente = typeof comanda.cliente === 'string' ? JSON.parse(comanda.cliente) : (comanda.cliente || {});
+        } catch (e) {
+            cliente = { nome: comanda.cliente || 'Cliente', telefone: comanda.telefone || '', endereco: comanda.endereco || '' };
+        }
 
-const nomeCliente = cliente.nome || 'Cliente';
-const telCliente = cliente.telefone || 'Não informado';
-const enderecoFormatado = cliente.endereco || comanda.endereco || 'Retirada no Balcão';
+        const nomeCliente = cliente.nome || 'Cliente';
+        const telCliente = cliente.telefone || comanda.telefone || 'Não informado';
+        const enderecoFormatado = cliente.endereco || comanda.endereco || 'Retirada no Balcão';
 
         // Tratamento dos itens
-        const itens = typeof comanda.itens === 'string' ? JSON.parse(comanda.itens) : (comanda.itens || []);
+        let itens = [];
+        try {
+            itens = typeof comanda.itens === 'string' ? JSON.parse(comanda.itens) : (comanda.itens || []);
+        } catch (e) {
+            itens = [];
+        }
+
         const itensHTML = Array.isArray(itens) ? itens.map(item => `
             <div class="item-box">
-                <div class="item-titulo">🍕 ${item.titulo || item.nome || item.descricao || 'Item'} x${item.quantidade || 1}</div>
+                <div class="item-titulo">🍕 ${item.titulo || item.nome || 'Item'} x${item.quantidade || 1}</div>
                 ${item.detalhes ? `<div class="item-sub">Detalhes: ${item.detalhes}</div>` : ''}
-                ${item.obs || item.observacao ? `<div class="item-obs">Obs: ${item.obs || item.observacao}</div>` : ''}
+                ${item.observacao ? `<div class="item-obs">Obs: ${item.observacao}</div>` : ''}
             </div>
         `).join('') : '';
-
-        // Tratamento do Pagamento
-        const pagamento = typeof comanda.pagamento === 'string' ? JSON.parse(comanda.pagamento) : (comanda.pagamento || {});
-        const textoPagamento = pagamento.metodo
-            ? `${pagamento.metodo}${pagamento.troco ? ' - Troco p/ R$ ' + pagamento.troco : ''}`
-            : 'Não especificado';
 
         return `
             <div class="card-comanda" id="comanda-${comanda.id}">
@@ -76,7 +79,7 @@ const enderecoFormatado = cliente.endereco || comanda.endereco || 'Retirada no B
                         <span class="data">${dataHora}</span>
                     </h3>
                     <div class="itens-lista">${itensHTML}</div>
-                    <button class="btn-imprimir-cozinha" onclick="imprimirVia(${comanda.id}, 'cozinha')">🖨️ Imprimir Via Cozinha</button>
+                    <button type="button" class="btn-imprimir-cozinha" onclick="imprimirVia(${comanda.id}, 'cozinha')">🖨️ Imprimir Via Cozinha</button>
                 </div>
 
                 <!-- VIA MOTOBOY -->
@@ -98,12 +101,10 @@ const enderecoFormatado = cliente.endereco || comanda.endereco || 'Retirada no B
                         <div class="itens-lista">${itensHTML}</div>
                     </div>
 
-                    <div style="font-size: 0.9em; margin-bottom: 8px;"><strong>Pagamento:</strong> ${textoPagamento}</div>
-
                     <div class="frete-box">
                         <label style="font-size:0.85em; font-weight:bold; color:#27ae60;">Frete (R$):</label>
                         <input type="number" step="0.50" class="frete-input" id="input-frete-${comanda.id}" value="${valorFrete.toFixed(2)}">
-                        <button class="btn-salvar-frete" onclick="salvarFrete(${comanda.id})">💾 Salvar Frete</button>
+                        <button type="button" class="btn-salvar-frete" onclick="salvarFrete(${comanda.id})">💾 Salvar Frete</button>
                     </div>
 
                     <div style="margin-top: 10px; font-size: 0.95em;">
@@ -112,7 +113,7 @@ const enderecoFormatado = cliente.endereco || comanda.endereco || 'Retirada no B
                         <div class="total" style="margin-top:4px;">Total Final: R$ <span id="txt-total-${comanda.id}">${valorTotalFinal.toFixed(2).replace('.', ',')}</span></div>
                     </div>
 
-                    <button class="btn-imprimir-moto" onclick="imprimirVia(${comanda.id}, 'motoboy')">🖨️ Imprimir Via Motoboy</button>
+                    <button type="button" class="btn-imprimir-moto" onclick="imprimirVia(${comanda.id}, 'motoboy')">🖨️ Imprimir Via Motoboy</button>
                 </div>
             </div>
         `;
@@ -165,7 +166,12 @@ function renderizarPainelFretes(comandas) {
         const rawData = c.criado_em || c.data || c.timestamp;
         const dataFmt = rawData ? new Date(rawData).toLocaleString('pt-BR') : '--';
 
-        const cliente = typeof c.cliente === 'string' ? JSON.parse(c.cliente) : (c.cliente || {});
+        let cliente = {};
+        try {
+            cliente = typeof c.cliente === 'string' ? JSON.parse(c.cliente) : (c.cliente || {});
+        } catch (e) {
+            cliente = { nome: c.cliente || 'Cliente' };
+        }
         const nomeCliente = cliente.nome || 'Cliente';
 
         return `
