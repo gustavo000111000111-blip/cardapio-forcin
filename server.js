@@ -9,12 +9,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Serve os ficheiros estáticos da pasta raiz (index.html, script.js, style.css)
+// Serve os ficheiros estáticos da pasta raiz
 app.use(express.static(__dirname));
 
 const PORT = process.env.PORT || 10000;
 
-// Conexão PostgreSQL (Neon.tech / Render)
+// Conexão PostgreSQL (Neon.tech / Render / Supabase Direct)
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: process.env.DATABASE_URL ? { rejectUnauthorized: false } : false
@@ -66,7 +66,7 @@ async function initDB() {
       );
     `);
 
-    // 3. Garante que a coluna 'criado_em' exista mesmo em tabelas antigas
+    // 3. Garante que a coluna 'criado_em' exista
     await pool.query(`
       ALTER TABLE comandas ADD COLUMN IF NOT EXISTS criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
     `);
