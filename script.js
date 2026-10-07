@@ -4,54 +4,58 @@ async function carregarCardapioDoBanco() {
         if (!resposta.ok) return;
 
         const produtosBanco = await resposta.json();
+        console.log('Produtos recebidos do banco:', produtosBanco);
 
-        if (Array.isArray(produtosBanco) && produtosBanco.length > 0) {
-            SABORES = [];
-            PROMOCOES = [];
-            BEBIDAS = [];
+        if (!Array.isArray(produtosBanco) || produtosBanco.length === 0) return;
 
-            produtosBanco.forEach(p => {
-                const cat = String(p.categoria || '').trim().toLowerCase();
-                const subcat = String(p.subcategoria || '').trim().toLowerCase();
+        // Atualiza as variáveis globais se existirem
+        if (typeof SABORES !== 'undefined') SABORES = [];
+        if (typeof PROMOCOES !== 'undefined') PROMOCOES = [];
+        if (typeof BEBIDAS !== 'undefined') BEBIDAS = [];
 
-                const item = {
-                    id: p.id,
-                    categoria: subcat || 'tradicional',
-                    nome: p.nome,
-                    desc: p.descricao || '',
-                    precos: {
-                        broto: Number(p.preco_broto || p.preco_unico || 0),
-                        media: Number(p.preco_media || p.preco_unico || 0),
-                        grande: Number(p.preco_grande || p.preco_unico || 0),
-                        familia: Number(p.preco_familia || p.preco_unico || 0),
-                        ituana: Number(p.preco_ituana || p.preco_unico || 0)
-                    },
-                    preco: Number(p.preco_unico || p.preco_grande || 0)
-                };
+        // Filtra por categoria
+        const pizzas = produtosBanco.filter(p =>
+            p.categoria && p.categoria.toLowerCase() === 'pizza'
+        );
+        const bebidas = produtosBanco.filter(p =>
+            p.categoria && p.categoria.toLowerCase() === 'bebida'
+        );
+        const promocoes = produtosBanco.filter(p =>
+            p.categoria && p.categoria.toLowerCase() === 'promocao'
+        );
 
-                if (cat === 'bebida') {
-                    BEBIDAS.push(item);
-                } else if (cat === 'promocao' || subcat === 'promocao') {
-                    PROMOCOES.push(item);
-                } else {
-                    SABORES.push(item);
-                }
-            });
-
-            // Executa a renderização na página
-            if (typeof renderizarDestaques === 'function') renderizarDestaques();
-            if (typeof renderizarCardapio === 'function') {
-                renderizarCardapio(ordenarPorPreco ? ordenarPorPreco(SABORES) : SABORES, 'cardapioContainer', 'montador');
-                renderizarCardapio(ordenarPorPreco ? ordenarPorPreco(PROMOCOES) : PROMOCOES, 'promocoesContainer', 'promo');
-                renderizarCardapio(BEBIDAS, 'bebidasContainer', 'bebida');
-            }
+        // Se existirem as funções de renderização nativas do projeto, executa-as
+        if (typeof renderizarCardapio === 'function') {
+            if (pizzas.length > 0) renderizarCardapio(pizzas, 'cardapioContainer', 'montador');
+            if (promocoes.length > 0) renderizarCardapio(promocoes, 'promocoesContainer', 'promo');
+            if (bebidas.length > 0) renderizarCardapio(bebidas, 'bebidasContainer', 'bebida');
+        } else {
+            // FALLBACK: Se as funções de renderização falharem, desenha diretamente nos containers
+            desenharListaDirecta(pizzas, 'cardapioContainer');
+            desenharListaDirecta(promocoes, 'promocoesContainer');
+            desenharListaDirecta(bebidas, 'bebidasContainer');
         }
+
     } catch (erro) {
-        console.error('Erro ao carregar cardápio:', erro);
+        console.error('Erro ao carregar e renderizar cardápio:', erro);
     }
 }
 
-// Dispara o carregamento assim que o navegador abre a página
+// Função de emergência para desenhar na tela se faltar alguma função no script
+function desenharListaDirecta(lista, containerId) {
+    const container = document.getElementById(containerId);
+    if (!container || lista.length === 0) return;
+
+    container.innerHTML = lista.map(item => `
+        <div style="border: 1px solid #ddd; padding: 15px; margin: 10px 0; border-radius: 8px; background: #fff;">
+            <h3 style="margin: 0 0 5px 0;">${item.nome}</h3>
+            <p style="margin: 0 0 10px 0; color: #666;">${item.descricao || ''}</p>
+            <strong>Preço: R$ ${Number(item.preco_grande || item.preco_unico || item.preco_broto || 0).toFixed(2)}</strong>
+        </div>
+    `).join('');
+}
+
+// Executa o carregamento assim que o DOM estiver pronto
 document.addEventListener('DOMContentLoaded', () => {
     carregarCardapioDoBanco();
 });
