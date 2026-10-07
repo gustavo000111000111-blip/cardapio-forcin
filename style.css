@@ -277,14 +277,12 @@ header p { font-size: 14px; opacity: 0.95; margin-bottom: 10px; }
 footer {
     text-align: center;
     padding: 20px;
-    background-color: var(--bg-main);
+    background-color: var(--bg);
     font-size: 12px;
-    border-top: 1px solid var(--border-color);
+    border-top: 1px solid var(--border);
     color: #888;
 }
 
-footer a { color: var(--accent-gold); text-decoration: none; font-weight: bold; }
+footer a { color: var(--primary); text-decoration: none; font-weight: bold; }
 
-}
-
-.cart-footer { padding: 15px; border-top: 1px solid var(--border-color); background: var(--bg-main); }
+.cart-footer { padding: 15px; border-top: 1px solid var(--border); background: var(--bg); }
