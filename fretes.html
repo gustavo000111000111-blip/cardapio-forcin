@@ -6,59 +6,110 @@
     <title>Painel de Fretes - Forcin Pizzaria</title>
     <style>
         * { box-sizing: border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
-        body { background-color: #f4f6f8; margin: 0; padding: 20px; }
-        h1 { text-align: center; color: #333; margin-bottom: 20px; }
+        body { background-color: #f4f6f8; margin: 0; padding: 20px; color: #333; }
+        .container { max-width: 950px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
 
-        .painel-fretes-container { max-width: 900px; margin: 0 auto; background: #fff; padding: 25px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); }
-        
-        .nav-link { display: inline-block; margin-bottom: 20px; color: #3498db; text-decoration: none; font-weight: bold; }
+        .nav-link { display: inline-block; margin-bottom: 15px; color: #3498db; text-decoration: none; font-weight: bold; }
         .nav-link:hover { text-decoration: underline; }
 
-        .frete-summary { display: flex; gap: 20px; margin-bottom: 20px; }
-        .frete-card { background: #f8f9fa; padding: 15px 20px; border-radius: 6px; flex: 1; text-align: center; border: 1px solid #e9ecef; }
-        .frete-card span { font-size: 0.9em; color: #6c757d; font-weight: 500; }
-        .frete-card strong { display: block; font-size: 1.6em; color: #27ae60; margin-top: 5px; }
+        h1 { text-align: center; color: #2c3e50; margin-bottom: 20px; font-size: 22px; }
 
+        /* Links / Abas do Painel */
+        .fretes-nav { display: flex; gap: 10px; border-bottom: 2px solid #eee; padding-bottom: 15px; margin-bottom: 20px; flex-wrap: wrap; }
+        .tab-link { background: #e9ecef; border: none; padding: 10px 18px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; color: #495057; transition: all 0.2s; }
+        .tab-link.active { background: #27ae60; color: #fff; }
+
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Cards de Resumo */
+        .summary-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .summary-card { background: #f8f9fa; padding: 20px; border-radius: 8px; text-align: center; border: 1px solid #e9ecef; }
+        .summary-card span { font-size: 13px; color: #6c757d; font-weight: 600; display: block; margin-bottom: 5px; }
+        .summary-card strong { font-size: 22px; color: #27ae60; }
+
+        /* Tabelas */
+        .table-responsive { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 0.95em; }
+        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #eee; font-size: 14px; }
         th { background: #f8f9fa; color: #555; }
         tr:hover { background-color: #fcfcfc; }
+
+        /* Formulários e Filtros */
+        .form-group { margin-bottom: 15px; display: flex; flex-direction: column; max-width: 400px; }
+        label { font-size: 13px; font-weight: bold; margin-bottom: 5px; color: #555; }
+        select, input { padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 14px; outline: none; }
+        select:focus, input:focus { border-color: #27ae60; }
+        .btn-salvar { background: #27ae60; color: #fff; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: bold; font-size: 14px; }
+        .btn-salvar:hover { background: #219653; }
     </style>
 </head>
 <body>
 
-    <div class="painel-fretes-container">
+    <div class="container">
         <a href="painel.html" class="nav-link">← Voltar ao Painel de Comandas</a>
-        <h1>📦 Painel de Armazenamento de Fretes</h1>
+        <h1>📦 Gestão e Controlo de Fretes</h1>
 
-        <div class="frete-summary">
-            <div class="frete-card">
-                <span>Total em Fretes</span>
-                <strong id="totalFretesAcumulado">R$ 0,00</strong>
+        <!-- Menu de Navegação em Links -->
+        <div class="fretes-nav">
+            <button type="button" class="tab-link active" onclick="mudarAba('bairros', this)">📍 Bairros</button>
+            <button type="button" class="tab-link" onclick="mudarAba('metricas', this)">📊 Qtd de Pedidos e Valor Total</button>
+            <button type="button" class="tab-link" onclick="mudarAba('senha', this)">🔑 Senha</button>
+        </div>
+
+        <!-- ABA 1: BAIRROS -->
+        <div id="aba-bairros" class="tab-content active">
+            <div class="form-group">
+                <label for="filtroBairro">Escolha o Bairro:</label>
+                <select id="filtroBairro" onchange="filtrarPorBairro()">
+                    <option value="todos">-- Todos os Bairros Salvos --</option>
+                </select>
             </div>
-            <div class="frete-card">
-                <span>Entregas Registradas</span>
-                <strong id="qtdEntregasFrete">0</strong>
+
+            <div class="table-responsive">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Endereço de Entrega Completo</th>
+                            <th>Valor do Frete</th>
+                            <th>Valor do Pedido</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tabelaBairros">
+                        <tr><td colspan="3" style="text-align:center;">A carregar registos...</td></tr>
+                    </tbody>
+                </table>
             </div>
         </div>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>Comanda</th>
-                    <th>Cliente</th>
-                    <th>Valor Frete</th>
-                    <th>Total Pedido</th>
-                    <th>Data/Hora</th>
-                </tr>
-            </thead>
-            <tbody id="tabelaFretes">
-                <tr><td colspan="5" style="text-align:center;">Carregando fretes...</td></tr>
-            </tbody>
-        </table>
+        <!-- ABA 2: QTD DE PEDIDOS E VALOR TOTAL -->
+        <div id="aba-metricas" class="tab-content">
+            <div class="summary-grid">
+                <div class="summary-card">
+                    <span>Quantidade Total de Pedidos</span>
+                    <strong id="qtdTotalPedidos" style="color: #2980b9;">0</strong>
+                </div>
+                <div class="summary-card">
+                    <span>Valor Acumulado dos Pedidos</span>
+                    <strong id="valorTotalPedidos">R$ 0,00</strong>
+                </div>
+                <div class="summary-card">
+                    <span>Valor Total em Fretes</span>
+                    <strong id="valorTotalFretes">R$ 0,00</strong>
+                </div>
+            </div>
+        </div>
+
+        <!-- ABA 3: SENHA -->
+        <div id="aba-senha" class="tab-content">
+            <div class="form-group">
+                <label for="novaSenhaInput">Nova Senha de Acesso (Admin / Fretes):</label>
+                <input type="password" id="novaSenhaInput" placeholder="Digite a nova senha">
+            </div>
+            <button type="button" class="btn-salvar" onclick="alterarSenhaAdministrativa()">Salvar Nova Senha</button>
+        </div>
     </div>
 
     <script src="fretes.js"></script>
-
 </body>
 </html>
