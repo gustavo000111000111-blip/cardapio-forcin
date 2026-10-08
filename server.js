@@ -89,8 +89,20 @@ app.post('/api/produtos', verificarAdmin, async (req, res) => {
     const { categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico } = req.body;
     try {
         const { rows } = await pool.query(
-            `INSERT INTO produtos (categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
-            [categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico]
+            `INSERT INTO produtos (categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING *`,
+            [
+                categoria || 'pizza',
+                subcategoria || 'tradicional',
+                nome,
+                descricao || '',
+                preco_broto || 0,
+                preco_media || 0,
+                preco_grande || 0,
+                preco_familia || 0,
+                preco_ituana || 0,
+                preco_unico || 0
+            ]
         );
         res.json(rows[0]);
     } catch (err) {
@@ -102,9 +114,21 @@ app.put('/api/produtos/:id', verificarAdmin, async (req, res) => {
     const { id } = req.params;
     const { categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico } = req.body;
     try {
-        const { rows } = await pool.query(
-            `UPDATE produtos SET categoria=$1, subcategoria=$2, nome=$3, descricao=$4, preco_broto=$5, preco_media=$6, preco_grande=$7, preco_familia=$8, preco_ituana=$9, preco_unico=$10 WHERE id=$1`,
-            [categoria, subcategoria, nome, descricao, preco_broto, preco_media, preco_grande, preco_familia, preco_ituana, preco_unico, id]
+        await pool.query(
+            `UPDATE produtos SET categoria=$1, subcategoria=$2, nome=$3, descricao=$4, preco_broto=$5, preco_media=$6, preco_grande=$7, preco_familia=$8, preco_ituana=$9, preco_unico=$10 WHERE id=$11`,
+            [
+                categoria || 'pizza',
+                subcategoria || 'tradicional',
+                nome,
+                descricao || '',
+                preco_broto || 0,
+                preco_media || 0,
+                preco_grande || 0,
+                preco_familia || 0,
+                preco_ituana || 0,
+                preco_unico || 0,
+                id
+            ]
         );
         res.json({ sucesso: true });
     } catch (err) {
@@ -131,7 +155,6 @@ app.put('/api/produtos/reordenar', verificarAdmin, async (req, res) => {
                 if (typeof item === 'object' && item.id && item.ordem !== undefined) {
                     await pool.query('UPDATE produtos SET ordem = $1 WHERE id = $2', [item.ordem, item.id]);
                 } else {
-                    // Compatibilidade caso mande apenas array de IDs
                     const index = lista.indexOf(item);
                     await pool.query('UPDATE produtos SET ordem = $1 WHERE id = $2', [index, item]);
                 }
@@ -164,7 +187,6 @@ app.post('/api/comandas', async (req, res) => {
     const { cliente, telefone, endereco, total, itens } = req.body;
     const timestamp = Date.now();
 
-    // Assegura compatibilidade salvando o cliente de forma robusta
     const clienteObj = typeof cliente === 'object' ? JSON.stringify(cliente) : JSON.stringify({ nome: cliente, telefone, endereco });
 
     const query = `INSERT INTO comandas (cliente, telefone, endereco, total, frete, itens, timestamp) VALUES ($1, $2, $3, $4, 0, $5, $6) RETURNING id`;
