@@ -567,27 +567,24 @@ function toggleEndereco() {
 
 function toggleCamposImovel() {
     const tipo = document.getElementById('cliTipoImovel')?.value;
-    const extras = document.getElementById('camposExtrasImovel');
-    if (!extras) return;
+    const blocoComplementoUnico = document.getElementById('blocoComplementoUnico');
+    const blocoAptoCampo = document.getElementById('blocoAptoCampo');
+    const blocoCondoCampo = document.getElementById('blocoCondoCampo');
+
+    if (!blocoComplementoUnico || !blocoAptoCampo || !blocoCondoCampo) return;
 
     if (tipo === 'apartamento') {
-        extras.innerHTML = `
-            <div class="form-group"><label>Bloco / Torre e Apto:</label><input type="text" id="cliBlocoApto" placeholder="Ex: Torre B, Apto 42" oninput="salvarDadosCliente()"></div>
-            <div class="form-group"><label>Rua e Número:</label><input type="text" id="cliRua" placeholder="Nome da rua e número" oninput="salvarDadosCliente()"></div>
-            <div class="form-group"><label>Bairro:</label><input type="text" id="cliBairro" placeholder="Nome do bairro" oninput="salvarDadosCliente()"></div>
-        `;
+        blocoComplementoUnico.style.display = 'none';
+        blocoAptoCampo.style.display = 'block';
+        blocoCondoCampo.style.display = 'none';
     } else if (tipo === 'condominio') {
-        extras.innerHTML = `
-            <div class="form-group"><label>Condomínio e Casa/Lote:</label><input type="text" id="cliCondoCasa" placeholder="Ex: Res. Flores, Casa 15" oninput="salvarDadosCliente()"></div>
-            <div class="form-group"><label>Rua e Número:</label><input type="text" id="cliRua" placeholder="Nome da rua e número" oninput="salvarDadosCliente()"></div>
-            <div class="form-group"><label>Bairro:</label><input type="text" id="cliBairro" placeholder="Nome do bairro" oninput="salvarDadosCliente()"></div>
-        `;
+        blocoComplementoUnico.style.display = 'none';
+        blocoAptoCampo.style.display = 'none';
+        blocoCondoCampo.style.display = 'block';
     } else {
-        extras.innerHTML = `
-            <div class="form-group"><label>Rua e Número:</label><input type="text" id="cliRua" placeholder="Ex: Rua das Flores, 123" oninput="salvarDadosCliente()"></div>
-            <div class="form-group"><label>Bairro:</label><input type="text" id="cliBairro" placeholder="Ex: Centro" oninput="salvarDadosCliente()"></div>
-            <div class="form-group"><label>Complemento (Opcional):</label><input type="text" id="cliComplemento" placeholder="Próximo a..." oninput="salvarDadosCliente()"></div>
-        `;
+        blocoComplementoUnico.style.display = 'block';
+        blocoAptoCampo.style.display = 'none';
+        blocoCondoCampo.style.display = 'none';
     }
 }
 
