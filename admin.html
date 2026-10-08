@@ -38,7 +38,7 @@
 <div class="container">
     <header>
         <h1>Painel Administrativo - Pizzaria</h1>
-        <button class="btn-sair" onclick="sairPainel()">Sair</button>
+        <button type="button" class="btn-sair" onclick="sairPainel()">Sair</button>
     </header>
 
     <!-- FORMULÁRIO DE CADASTRO E EDIÇÃO -->
@@ -47,7 +47,7 @@
         <form id="formProduto" onsubmit="salvarProduto(event)">
             <div class="form-grid">
                 <div class="form-group">
-                    <label>Categoria:</label>
+                    <label for="pCategoria">Categoria:</label>
                     <select id="pCategoria">
                         <option value="pizza">Pizza</option>
                         <option value="promocao">Promoção</option>
@@ -55,7 +55,7 @@
                     </select>
                 </div>
                 <div class="form-group">
-                    <label>Subcategoria:</label>
+                    <label for="pSubcategoria">Subcategoria:</label>
                     <select id="pSubcategoria">
                         <option value="tradicional">Tradicional</option>
                         <option value="especial">Especial</option>
@@ -63,37 +63,37 @@
                     </select>
                 </div>
                 <div class="form-group full">
-                    <label>Nome do Produto:</label>
+                    <label for="pNome">Nome do Produto:</label>
                     <input type="text" id="pNome" placeholder="Ex: Calabresa Especial" required>
                 </div>
                 <div class="form-group full">
-                    <label>Descrição / Ingredientes:</label>
+                    <label for="pDescricao">Descrição / Ingredientes:</label>
                     <textarea id="pDescricao" placeholder="Mussarela, calabresa, cebola..."></textarea>
                 </div>
 
                 <!-- PREÇOS -->
                 <div class="form-group">
-                    <label>Preço Broto (R$):</label>
+                    <label for="pBroto">Preço Broto (R$):</label>
                     <input type="number" step="0.01" id="pBroto" value="0">
                 </div>
                 <div class="form-group">
-                    <label>Preço Média (R$):</label>
+                    <label for="pMedia">Preço Média (R$):</label>
                     <input type="number" step="0.01" id="pMedia" value="0">
                 </div>
                 <div class="form-group">
-                    <label>Preço Grande (R$):</label>
+                    <label for="pGrande">Preço Grande (R$):</label>
                     <input type="number" step="0.01" id="pGrande" value="0">
                 </div>
                 <div class="form-group">
-                    <label>Preço Família (R$):</label>
+                    <label for="pFamilia">Preço Família (R$):</label>
                     <input type="number" step="0.01" id="pFamilia" value="0">
                 </div>
                 <div class="form-group">
-                    <label>Preço Ituana (R$):</label>
+                    <label for="pItuana">Preço Ituana (R$):</label>
                     <input type="number" step="0.01" id="pItuana" value="0">
                 </div>
                 <div class="form-group">
-                    <label>Preço Único / Bebida (R$):</label>
+                    <label for="pUnico">Preço Único / Bebida (R$):</label>
                     <input type="number" step="0.01" id="pUnico" value="0">
                 </div>
             </div>

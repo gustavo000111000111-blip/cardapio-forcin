@@ -1,150 +1,213 @@
-const API_URL = '/api';
-let adminSenha = '';
+const SENHA_ADMIN = '21072026';
+let todosProdutos = [];
+let idEditando = null;
 
-function autenticar() {
-  const inputPass = document.getElementById('admin-pass');
-  if (inputPass) {
-    adminSenha = inputPass.value;
-  }
-  carregarProdutosAdmin();
+document.addEventListener('DOMContentLoaded', () => {
+    carregarProdutos();
+});
+
+function sairPainel() {
+    window.location.href = '/';
 }
 
-async function carregarProdutosAdmin() {
-  try {
-    const res = await fetch(`${API_URL}/produtos`);
-    const produtos = await res.json();
-    renderizarTabelaAdmin(produtos);
-  } catch (err) {
-    console.error('Erro ao carregar produtos:', err);
-  }
-}
+async function carregarProdutos() {
+    try {
+        const resposta = await fetch('/api/produtos');
+        if (!resposta.ok) throw new Error('Falha ao buscar produtos');
 
-function renderizarTabelaAdmin(produtos) {
-  const tbody = document.getElementById('tabelaProdutos');
-  if (!tbody) return;
-
-  if (!produtos || produtos.length === 0) {
-    tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;">Nenhum produto cadastrado.</td></tr>';
-    return;
-  }
-
-  tbody.innerHTML = produtos.map((p, index) => `
-    <tr>
-      <td>${p.id}</td>
-      <td><strong>${p.nome}</strong><br><small style="color:#666;">${p.descricao || ''}</small></td>
-      <td><span class="badge">${p.categoria}</span></td>
-      <td>R$ ${Number(p.preco_grande || p.preco_unico || p.preco_broto || 0).toFixed(2)}</td>
-      <td style="text-align: right;">
-        <button onclick="moverOrdem(${index}, -1)">⬆️</button>
-        <button onclick="moverOrdem(${index}, 1)">⬇️</button>
-        <button onclick="editarProduto(${p.id})">✏️</button>
-        <button onclick="excluirProduto(${p.id})">❌</button>
-      </td>
-    </tr>
-  `).join('');
-}
-
-async function salvarProduto(event) {
-  if (event) event.preventDefault();
-
-  const produtoData = {
-    id: document.getElementById('formProduto').dataset.id || null,
-    categoria: document.getElementById('pCategoria').value,
-    subcategoria: document.getElementById('pSubcategoria').value,
-    nome: document.getElementById('pNome').value,
-    descricao: document.getElementById('pDescricao').value,
-    preco_broto: parseFloat(document.getElementById('pBroto').value) || 0,
-    preco_media: parseFloat(document.getElementById('pMedia').value) || 0,
-    preco_grande: parseFloat(document.getElementById('pGrande').value) || 0,
-    preco_familia: parseFloat(document.getElementById('pFamilia').value) || 0,
-    preco_ituana: parseFloat(document.getElementById('pItuana').value) || 0,
-    preco_unico: parseFloat(document.getElementById('pUnico').value) || 0
-  };
-
-  const metodo = produtoData.id ? 'PUT' : 'POST';
-  const url = produtoData.id ? `${API_URL}/produtos/${produtoData.id}` : `${API_URL}/produtos`;
-
-  try {
-    const res = await fetch(url, {
-      method: metodo,
-      headers: {
-        'Content-Type': 'application/json',
-        'x-admin-password': adminSenha
-      },
-      body: JSON.stringify(produtoData)
-    });
-
-    if (res.ok) {
-      cancelarEdicao();
-      carregarProdutosAdmin();
-    } else {
-      alert('Erro ao salvar produto. Verifique a senha do admin.');
+        todosProdutos = await resposta.json();
+        renderizarTabela(todosProdutos);
+    } catch (erro) {
+        console.error('Erro ao carregar lista de produtos:', erro);
+        alert('Não foi possível carregar a lista de produtos do servidor.');
     }
-  } catch (err) {
-    console.error('Erro ao salvar:', err);
-  }
 }
 
-async function excluirProduto(id) {
-  if (!confirm('Deseja realmente apagar este produto?')) return;
+function renderizarTabela(lista) {
+    const tabela = document.getElementById('tabelaProdutos');
+    if (!tabela) return;
 
-  try {
-    const res = await fetch(`${API_URL}/produtos/${id}`, {
-      method: 'DELETE',
-      headers: {
-        'x-admin-password': adminSenha
-      }
-    });
-
-    if (res.ok) {
-      carregarProdutosAdmin();
-    } else {
-      alert('Erro ao apagar produto.');
+    if (!lista || lista.length === 0) {
+        tabela.innerHTML = '<tr><td colspan="5" style="text-align:center;">Nenhum produto cadastrado.</td></tr>';
+        return;
     }
-  } catch (err) {
-    console.error('Erro ao excluir:', err);
-  }
+
+    tabela.innerHTML = lista.map((p, index) => {
+        const precoExibicao = (p.preco_unico !== undefined && Number(p.preco_unico) > 0)
+            ? `R$ ${Number(p.preco_unico).toFixed(2).replace('.', ',')}`
+            : `G: R$ ${Number(p.preco_grande || 0).toFixed(2).replace('.', ',')}`;
+
+        return `
+            <tr>
+                <td><strong>#${p.id}</strong></td>
+                <td>
+                    <strong>${p.nome}</strong><br>
+                    <small style="color:#666;">${p.descricao || 'Sem descrição'}</small>
+                </td>
+                <td><span class="badge">${p.categoria}</span> ${p.subcategoria ? `(${p.subcategoria})` : ''}</td>
+                <td>${precoExibicao}</td>
+                <td style="text-align: right; white-space: nowrap;">
+                    <button type="button" onclick="moverProduto(${index}, -1)" title="Subir na lista" style="background:#2c3e50; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; margin-right:3px;">⬆️</button>
+                    <button type="button" onclick="moverProduto(${index}, 1)" title="Descer na lista" style="background:#2c3e50; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer; margin-right:8px;">⬇️</button>
+                    <button type="button" onclick="prepararEdicao(${p.id})" style="background:#27ae60; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer; margin-right:5px;">Editar</button>
+                    <button type="button" onclick="excluirProduto(${p.id})" style="background:#c0392b; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Excluir</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
-async function moverOrdem(index, direcao) {
-  const res = await fetch(`${API_URL}/produtos`);
-  let produtos = await res.json();
+async function moverProduto(index, direcao) {
+    const novoIndex = index + direcao;
+    if (novoIndex < 0 || novoIndex >= todosProdutos.length) return;
 
-  const novoIndex = index + direcao;
-  if (novoIndex < 0 || novoIndex >= produtos.length) return;
+    const temp = todosProdutos[index];
+    todosProdutos[index] = todosProdutos[novoIndex];
+    todosProdutos[novoIndex] = temp;
 
-  const temp = produtos[index];
-  produtos[index] = produtos[novoIndex];
-  produtos[novoIndex] = temp;
+    const payload = todosProdutos.map((p, idx) => ({
+        id: p.id,
+        ordem: idx + 1
+    }));
 
-  const ordemIds = produtos.map(p => p.id);
+    renderizarTabela(todosProdutos);
 
-  await fetch(`${API_URL}/produtos/reordenar`, {
-    method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-admin-password': 3003
-    },
-    body: JSON.stringify({ ordem: ordemIds })
-  });
+    try {
+        const resposta = await fetch('/api/produtos/reordenar', {
+            method: 'PUT',
+            headers: {
+                'Content-Type': 'application/json',
+                'x-admin-password': SENHA_ADMIN
+            },
+            body: JSON.stringify({ itens: payload })
+        });
 
-  carregarProdutosAdmin();
+        if (!resposta.ok) {
+            alert('Erro ao salvar nova ordem no servidor.');
+            carregarProdutos();
+        }
+    } catch (erro) {
+        console.error('Erro na reordenação:', erro);
+        carregarProdutos();
+    }
+}
+
+function filtrarProdutos() {
+    const termo = document.getElementById('inputBusca')?.value.toLowerCase() || '';
+    const filtrados = todosProdutos.filter(p =>
+        (p.nome && p.nome.toLowerCase().includes(termo)) ||
+        (p.categoria && p.categoria.toLowerCase().includes(termo))
+    );
+    renderizarTabela(filtrados);
+}
+
+function prepararEdicao(id) {
+    const produto = todosProdutos.find(p => Number(p.id) === Number(id));
+    if (!produto) return;
+
+    idEditando = id;
+
+    document.getElementById('pCategoria').value = produto.categoria || 'pizza';
+    document.getElementById('pSubcategoria').value = produto.subcategoria || 'tradicional';
+    document.getElementById('pNome').value = produto.nome || '';
+    document.getElementById('pDescricao').value = produto.descricao || '';
+
+    document.getElementById('pBroto').value = produto.preco_broto || 0;
+    document.getElementById('pMedia').value = produto.preco_media || 0;
+    document.getElementById('pGrande').value = produto.preco_grande || 0;
+    document.getElementById('pFamilia').value = produto.preco_familia || 0;
+    document.getElementById('pItuana').value = produto.preco_ituana || 0;
+    document.getElementById('pUnico').value = produto.preco_unico || 0;
+
+    document.getElementById('tituloFormulario').innerText = `Editando Produto #${id}`;
+    document.getElementById('btnSalvarForm').innerText = 'Salvar Alterações';
+    document.getElementById('btnCancelarForm').style.display = 'inline-block';
+
+    window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
 function cancelarEdicao() {
-  const form = document.getElementById('formProduto');
-  if (form) {
-    form.reset();
-    delete form.dataset.id;
-  }
-  const btnCancelar = document.getElementById('btnCancelarForm');
-  if (btnCancelar) btnCancelar.style.display = 'none';
-  const btnSalvar = document.getElementById('btnSalvarForm');
-  if (btnSalvar) btnSalvar.innerText = 'Cadastrar Produto';
-  const titulo = document.getElementById('tituloFormulario');
-  if (titulo) titulo.innerText = 'Cadastrar Novo Produto';
+    idEditando = null;
+    document.getElementById('formProduto').reset();
+
+    document.getElementById('tituloFormulario').innerText = 'Cadastrar Novo Produto';
+    document.getElementById('btnSalvarForm').innerText = 'Cadastrar Produto';
+    document.getElementById('btnCancelarForm').style.display = 'none';
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  carregarProdutosAdmin();
-});
+function obterNumero(idInput) {
+    const val = parseFloat(document.getElementById(idInput)?.value);
+    return isNaN(val) ? 0 : val;
+}
+
+async function salvarProduto(event) {
+    if (event) event.preventDefault();
+
+    const dados = {
+        categoria: document.getElementById('pCategoria').value,
+        subcategoria: document.getElementById('pSubcategoria').value,
+        nome: document.getElementById('pNome').value.trim(),
+        descricao: document.getElementById('pDescricao').value.trim(),
+        preco_broto: obterNumero('pBroto'),
+        preco_media: obterNumero('pMedia'),
+        preco_grande: obterNumero('pGrande'),
+        preco_familia: obterNumero('pFamilia'),
+        preco_ituana: obterNumero('pItuana'),
+        preco_unico: obterNumero('pUnico')
+    };
+
+    if (!dados.nome) {
+        alert('Por favor, digite o nome do produto.');
+        return;
+    }
+
+    const url = idEditando ? `/api/produtos/${idEditando}` : '/api/produtos';
+    const metodo = idEditando ? 'PUT' : 'POST';
+
+    try {
+        const resposta = await fetch(url, {
+            method: metodo,
+            headers: {
+                'Content-Type': 'application/json',
+                'x-admin-password': SENHA_ADMIN
+            },
+            body: JSON.stringify(dados)
+        });
+
+        if (resposta.ok) {
+            alert(idEditando ? 'Produto atualizado com sucesso!' : 'Produto cadastrado com sucesso!');
+            cancelarEdicao();
+            carregarProdutos();
+        } else {
+            const resData = await resposta.json().catch(() => ({}));
+            alert(`Erro no servidor (${resposta.status}): ${resData.erro || 'Falha ao salvar'}`);
+        }
+    } catch (erro) {
+        console.error('Erro na requisição:', erro);
+        alert('Erro ao se comunicar com o servidor.');
+    }
+}
+
+async function excluirProduto(id) {
+    if (!confirm(`Tem certeza que deseja excluir o produto #${id}?`)) return;
+
+    try {
+        const resposta = await fetch(`/api/produtos/${id}`, {
+            method: 'DELETE',
+            headers: {
+                'x-admin-password': SENHA_ADMIN
+            }
+        });
+
+        if (resposta.ok) {
+            alert('Produto excluído com sucesso!');
+            carregarProdutos();
+        } else {
+            const resData = await resposta.json().catch(() => ({}));
+            alert(`Erro ao excluir: ${resData.erro || 'Acesso negado'}`);
+        }
+    } catch (erro) {
+        console.error('Erro ao excluir:', erro);
+        alert('Falha de conexão ao tentar excluir.');
+    }
+}
