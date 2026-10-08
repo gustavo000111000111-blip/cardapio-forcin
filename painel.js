@@ -15,7 +15,7 @@ function idParaCodigo(id) {
 async function carregarComandas() {
     try {
         const resposta = await fetch(`${API_URL}/comandas`);
-        if (!resposta.ok) return;
+        if (!resposta.ok) throw new Error('Erro ao buscar comandas');
         const comandas = await resposta.json();
         renderizarComandas(comandas);
         renderizarPainelFretes(comandas);
@@ -42,7 +42,6 @@ function renderizarComandas(comandas) {
         const valorItens = Number(comanda.total || 0);
         const valorTotalFinal = valorItens + valorFrete;
 
-        // Tratamento seguro do objeto cliente
         let cliente = {};
         try {
             cliente = typeof comanda.cliente === 'string' ? JSON.parse(comanda.cliente) : (comanda.cliente || {});
@@ -51,10 +50,9 @@ function renderizarComandas(comandas) {
         }
 
         const nomeCliente = cliente.nome || 'Cliente';
-        const telCliente = cliente.telefone || comanda.telefone || 'Não informado';
+        const telCliente = cliente.telefone || 'Não informado';
         const enderecoFormatado = cliente.endereco || comanda.endereco || 'Retirada no Balcão';
 
-        // Tratamento dos itens
         let itens = [];
         try {
             itens = typeof comanda.itens === 'string' ? JSON.parse(comanda.itens) : (comanda.itens || []);
@@ -63,57 +61,55 @@ function renderizarComandas(comandas) {
         }
 
         const itensHTML = Array.isArray(itens) ? itens.map(item => `
-            <div class="item-box">
-                <div class="item-titulo">🍕 ${item.titulo || item.nome || 'Item'} x${item.quantidade || 1}</div>
-                ${item.detalhes ? `<div class="item-sub">Detalhes: ${item.detalhes}</div>` : ''}
-                ${item.observacao ? `<div class="item-obs">Obs: ${item.observacao}</div>` : ''}
+            <div class="item-box" style="margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px dashed #eee;">
+                <div class="item-titulo">🍕 ${item.titulo || item.nome || item.descricao || 'Item'} x${item.quantidade || 1}</div>
+                ${item.detalhes ? `<div class="item-sub" style="font-size:0.85em; color:#555;">Detalhes: ${item.detalhes}</div>` : ''}
+                ${item.obs || item.observacao ? `<div class="item-obs" style="font-size:0.85em; color:#c0392b;">Obs: ${item.obs || item.observacao}</div>` : ''}
             </div>
         `).join('') : '';
 
         return `
-            <div class="card-comanda" id="comanda-${comanda.id}">
-                <!-- VIA COZINHA -->
-                <div class="via-cozinha" id="via-cozinha-${comanda.id}">
-                    <h3>
+            <div class="card-comanda" id="comanda-${comanda.id}" style="background: #fff; border-radius: 8px; width: 380px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); display: flex; flex-direction: column; gap: 15px;">
+                <div class="via-cozinha" id="via-cozinha-${comanda.id}" style="background: #fff9f9; padding: 12px; border-radius: 6px;">
+                    <h3 style="margin: 0 0 8px 0; color: #c0392b; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center;">
                         <span>🍕 COZINHA - #${codigoLetra}</span>
-                        <span class="data">${dataHora}</span>
+                        <span class="data" style="color: #7f8c8d; font-size: 0.8em;">${dataHora}</span>
                     </h3>
                     <div class="itens-lista">${itensHTML}</div>
-                    <button type="button" class="btn-imprimir-cozinha" onclick="imprimirVia(${comanda.id}, 'cozinha')">🖨️ Imprimir Via Cozinha</button>
+                    <button type="button" onclick="imprimirVia(${comanda.id}, 'cozinha')" style="margin-top:10px; background:#e74c3c; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">🖨️ Imprimir Via Cozinha</button>
                 </div>
 
-                <!-- VIA MOTOBOY -->
-                <div class="via-motoboy" id="via-moto-${comanda.id}">
-                    <h3>
+                <div class="via-motoboy" id="via-moto-${comanda.id}" style="background: #f0f7fb; padding: 12px; border-radius: 6px;">
+                    <h3 style="margin: 0 0 8px 0; color: #2980b9; font-size: 1.1em; display: flex; justify-content: space-between; align-items: center;">
                         <span>🛵 MOTOBOY - #${codigoLetra}</span>
-                        <span class="data">${dataHora}</span>
+                        <span class="data" style="color: #7f8c8d; font-size: 0.8em;">${dataHora}</span>
                     </h3>
-                    <div style="font-size: 1.05em; margin-bottom: 4px;"><strong>Cliente:</strong> ${nomeCliente}</div>
-                    <div style="font-size: 0.95em; margin-bottom: 4px;"><strong>Telefone:</strong> ${telCliente}</div>
+                    <div style="font-size: 1em; margin-bottom: 4px;"><strong>Cliente:</strong> ${nomeCliente}</div>
+                    <div style="font-size: 0.9em; margin-bottom: 4px;"><strong>Telefone:</strong> ${telCliente}</div>
 
-                    <div class="endereco-box">
+                    <div class="endereco-box" style="margin: 8px 0; background: #fff; padding: 8px; border-radius: 4px;">
                         <div style="font-size: 0.8em; color: #e74c3c; font-weight: bold;">ENDEREÇO DE ENTREGA:</div>
-                        <div class="endereco-texto">📍 ${enderecoFormatado}</div>
+                        <div class="endereco-texto" style="font-size: 0.9em;">📍 ${enderecoFormatado}</div>
                     </div>
 
                     <div style="margin: 8px 0; background: #fff; padding: 8px; border-radius: 4px;">
-                        <div style="font-size: 0.85em; font-weight: bold; color: #2980b9; margin-bottom: 6px;">📦 ITENS PARA CONFERÊNCIA:</div>
+                        <div style="font-size: 0.85em; font-weight: bold; color: #2980b9; margin-bottom: 6px;">📦 ITENS:</div>
                         <div class="itens-lista">${itensHTML}</div>
                     </div>
 
-                    <div class="frete-box">
+                    <div class="frete-box" style="display: flex; gap: 8px; align-items: center; margin-top: 10px;">
                         <label style="font-size:0.85em; font-weight:bold; color:#27ae60;">Frete (R$):</label>
-                        <input type="number" step="0.50" class="frete-input" id="input-frete-${comanda.id}" value="${valorFrete.toFixed(2)}">
-                        <button type="button" class="btn-salvar-frete" onclick="salvarFrete(${comanda.id})">💾 Salvar Frete</button>
+                        <input type="number" step="0.50" id="input-frete-${comanda.id}" value="${valorFrete.toFixed(2)}" style="width: 80px; padding: 5px;">
+                        <button type="button" onclick="salvarFrete(${comanda.id})" style="background:#27ae60; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">Salvar</button>
                     </div>
 
                     <div style="margin-top: 10px; font-size: 0.95em;">
                         <div>Itens: R$ ${valorItens.toFixed(2).replace('.', ',')}</div>
                         <div>Frete: R$ <span id="txt-frete-${comanda.id}">${valorFrete.toFixed(2).replace('.', ',')}</span></div>
-                        <div class="total" style="margin-top:4px;">Total Final: R$ <span id="txt-total-${comanda.id}">${valorTotalFinal.toFixed(2).replace('.', ',')}</span></div>
+                        <div class="total" style="font-weight:bold; margin-top:4px;">Total Final: R$ <span id="txt-total-${comanda.id}">${valorTotalFinal.toFixed(2).replace('.', ',')}</span></div>
                     </div>
 
-                    <button type="button" class="btn-imprimir-moto" onclick="imprimirVia(${comanda.id}, 'motoboy')">🖨️ Imprimir Via Motoboy</button>
+                    <button type="button" onclick="imprimirVia(${comanda.id}, 'motoboy')" style="margin-top:10px; background:#2980b9; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">🖨️ Imprimir Via Motoboy</button>
                 </div>
             </div>
         `;
@@ -170,7 +166,7 @@ function renderizarPainelFretes(comandas) {
         try {
             cliente = typeof c.cliente === 'string' ? JSON.parse(c.cliente) : (c.cliente || {});
         } catch (e) {
-            cliente = { nome: c.cliente || 'Cliente' };
+            cliente = { nome: 'Cliente' };
         }
         const nomeCliente = cliente.nome || 'Cliente';
 

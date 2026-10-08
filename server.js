@@ -52,12 +52,14 @@ async function criarTabelas() {
             endereco TEXT,
             total DOUBLE PRECISION,
             frete DOUBLE PRECISION DEFAULT 0,
+            pagamento TEXT,
             itens TEXT,
             timestamp BIGINT,
             criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )`);
 
         await pool.query(`ALTER TABLE comandas ADD COLUMN IF NOT EXISTS frete DOUBLE PRECISION DEFAULT 0`);
+        await pool.query(`ALTER TABLE comandas ADD COLUMN IF NOT EXISTS pagamento TEXT`);
         await pool.query(`ALTER TABLE comandas ADD COLUMN IF NOT EXISTS criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP`);
     } catch (err) {
         console.error('Erro ao criar tabelas:', err.message);
@@ -174,26 +176,31 @@ app.get('/api/comandas', async (req, res) => {
         const formatadas = rows.map(c => ({
             ...c,
             frete: Number(c.frete || 0),
+            cliente: typeof c.cliente === 'string' && c.cliente.startsWith('{') ? JSON.parse(c.cliente) : { nome: c.cliente, telefone: c.telefone, endereco: c.endereco },
+            pagamento: typeof c.pagamento === 'string' && c.pagamento.startsWith('{') ? JSON.parse(c.pagamento) : { metodo: c.pagamento || 'Não informado' },
             itens: typeof c.itens === 'string' ? JSON.parse(c.itens || '[]') : c.itens,
             data: parseInt(c.timestamp || Date.now())
         }));
         res.json(formatadas);
     } catch (err) {
+        console.error('Erro ao buscar comandas:', err.message);
         res.status(500).json({ erro: err.message });
     }
 });
 
 app.post('/api/comandas', async (req, res) => {
-    const { cliente, telefone, endereco, total, itens } = req.body;
+    const { cliente, telefone, endereco, total, itens, pagamento } = req.body;
     const timestamp = Date.now();
 
     const clienteObj = typeof cliente === 'object' ? JSON.stringify(cliente) : JSON.stringify({ nome: cliente, telefone, endereco });
+    const pagamentoObj = typeof pagamento === 'object' ? JSON.stringify(pagamento) : JSON.stringify({ metodo: pagamento || 'Não informado' });
 
-    const query = `INSERT INTO comandas (cliente, telefone, endereco, total, frete, itens, timestamp) VALUES ($1, $2, $3, $4, 0, $5, $6) RETURNING id`;
+    const query = `INSERT INTO comandas (cliente, telefone, endereco, total, frete, pagamento, itens, timestamp) VALUES ($1, $2, $3, $4, 0, $5, $6, $7) RETURNING id`;
     try {
-        const { rows } = await pool.query(query, [clienteObj, telefone || '', endereco || '', total, JSON.stringify(itens), timestamp]);
+        const { rows } = await pool.query(query, [clienteObj, telefone || '', endereco || '', total || 0, pagamentoObj, JSON.stringify(itens || []), timestamp]);
         res.json({ id: rows[0].id, mensagem: 'Comanda criada com sucesso!' });
     } catch (err) {
+        console.error('Erro ao inserir comanda:', err.message);
         res.status(500).json({ erro: err.message });
     }
 });
