@@ -11,7 +11,7 @@ let SABORES = [];
 let PROMOCOES = [];
 let BEBIDAS = [];
 
-const DESTAQUES_IDS = [63, 82, 47, 4, 13, 57, 50, 8];
+const DESTAQUES_IDS = [8, 13, 16, 47, 50, 57, 63, 82];
 const TELEFONE_WHATSAPP = '5511950826677';
 const CHAVE_LOCAL_STORAGE = 'forcin_pizzaria_cliente';
 
