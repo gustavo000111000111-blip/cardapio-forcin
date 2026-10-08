@@ -534,13 +534,13 @@ function continuarCheckoutSemBebida() {
 
 function irParaBebidas() {
     fecharModalSugestaoBebida();
-    const botoes = document.querySelectorAll('.tab-btn');
-    let btnBebidas = null;
-    botoes.forEach(b => {
-        if (b.textContent.includes('Bebidas')) btnBebidas = b;
-    });
-    trocarAba('bebidas', btnBebidas);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    const btnMontar = document.querySelector('.tab-btn[onclick*="montar"]');
+    trocarAba('montar', btnMontar);
+
+    const secaoBebidas = document.getElementById('secao-bebidas');
+    if (secaoBebidas) {
+        secaoBebidas.scrollIntoView({ behavior: 'smooth' });
+    }
 }
 
 function atualizarResumoCheckout() {
