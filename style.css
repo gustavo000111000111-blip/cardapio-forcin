@@ -286,3 +286,8 @@ footer {
 footer a { color: var(--primary); text-decoration: none; font-weight: bold; }
 
 .cart-footer { padding: 15px; border-top: 1px solid var(--border); background: var(--bg); }
+
+body.modal-ativo .floating-counter,
+body.modal-ativo #aviso-mobile-pizza {
+    display: none !important;
+}

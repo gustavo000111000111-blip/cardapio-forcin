@@ -511,20 +511,28 @@ function abrirCheckout(pularVerificacaoBebida = false) {
 
     atualizarResumoCheckout();
     document.getElementById('modalCheckout').style.display = 'flex';
+    document.body.classList.add('modal-ativo');
 }
 
 function fecharCheckout() {
     document.getElementById('modalCheckout').style.display = 'none';
+    document.body.classList.remove('modal-ativo');
 }
 
 function abrirModalSugestaoBebida() {
     const modal = document.getElementById('modalSugestaoBebida');
-    if (modal) modal.style.display = 'flex';
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.classList.add('modal-ativo');
+    }
 }
 
 function fecharModalSugestaoBebida() {
     const modal = document.getElementById('modalSugestaoBebida');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.classList.remove('modal-ativo');
+    }
 }
 
 function continuarCheckoutSemBebida() {
@@ -645,12 +653,19 @@ function abrirModalLimite(saborNome) {
     if (spanNovoSabor) spanNovoSabor.innerText = saborNome;
     if (maxSabores) maxSabores.innerText = tamanhoSelecionado.maxSabores;
     if (tamanhoNome) tamanhoNome.innerText = tamanhoSelecionado.nome.split(' ')[0];
-    if (modal) modal.style.display = 'flex';
+
+    if (modal) {
+        modal.style.display = 'flex';
+        document.body.classList.add('modal-ativo');
+    }
 }
 
 function fecharModalLimite() {
     const modal = document.getElementById('modalLimite');
-    if (modal) modal.style.display = 'none';
+    if (modal) {
+        modal.style.display = 'none';
+        document.body.classList.remove('modal-ativo');
+    }
     voltarMenuModal();
 }
 
