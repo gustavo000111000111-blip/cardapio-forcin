@@ -20,6 +20,33 @@ let saboresSelecionados = [];
 let carrinho = [];
 let urlWhatsAppFinal = '';
 
+// Controle para evitar duplicidade de comandas
+let enviandoPedido = false;
+let comandaJaCriada = false;
+
+function indiceParaLetra(index) {
+    let n = index + 1;
+    let codigo = '';
+    while (n > 0) {
+        let resto = (n - 1) % 26;
+        codigo = String.fromCharCode(65 + resto) + codigo;
+        n = Math.floor((n - 1) / 26);
+    }
+    return codigo;
+}
+
+function resetarTravaComanda() {
+    comandaJaCriada = false;
+    enviandoPedido = false;
+    const btnWhats = document.querySelector('#modalCheckout .btn-whatsapp');
+    if (btnWhats) {
+        btnWhats.disabled = false;
+        btnWhats.style.opacity = '1';
+        btnWhats.style.cursor = 'pointer';
+        btnWhats.innerText = 'Enviar Pedido via WhatsApp';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     carregarDadosSalvosCliente();
     carregarCardapioDoBanco();
@@ -149,7 +176,7 @@ function atualizarBadgeStatusLoja() {
 
     if (verificarLojaAberta()) {
         badge.className = 'status-badge aberto';
-        texto.textContent = '🟢 Aberto Agora (18h às 23h30)';
+        texto.textContent = '🟢 Aberto Agora (18:00 às 23:00)';
     } else {
         badge.className = 'status-badge fechado';
         texto.textContent = '🔴 Fechado no Momento (Abre às 18:00)';
@@ -200,7 +227,7 @@ function carregarDadosSalvosCliente() {
 }
 
 function normalizarNomeFoto(nome) {
-    return nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+    return nome.normalize("NFD").replace(/[\u0300-\u36f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 }
 
 function renderizarDestaques() {
@@ -389,6 +416,7 @@ function adicionarMontagemAoCarrinho() {
         observacao: observacao
     });
 
+    resetarTravaComanda();
     saboresSelecionados = [];
     if (obsInput) obsInput.value = '';
     atualizarMontagemUI();
@@ -412,6 +440,8 @@ function adicionarDestaqueAoCarrinho(saborId, event) {
         quantidade: 1,
         observacao: ''
     });
+
+    resetarTravaComanda();
     atualizarCarrinhoUI();
     mostrarNotificacao(`Pizza ${pizza.nome} adicionada!`);
 }
@@ -437,6 +467,7 @@ function tentarAdicionarBebida(id) {
         });
     }
 
+    resetarTravaComanda();
     atualizarCarrinhoUI();
     mostrarNotificacao(`Bebida "${bebida.nome}" adicionada!`);
 }
@@ -449,12 +480,14 @@ function alterarQuantidade(id, delta) {
     if (item.quantidade <= 0) {
         removerDoCarrinho(id);
     } else {
+        resetarTravaComanda();
         atualizarCarrinhoUI();
     }
 }
 
 function removerDoCarrinho(id) {
     carrinho = carrinho.filter(item => item.id !== id);
+    resetarTravaComanda();
     atualizarCarrinhoUI();
 }
 
@@ -480,10 +513,10 @@ function atualizarCarrinhoUI() {
         return;
     }
 
-    container.innerHTML = carrinho.map(item => `
+    container.innerHTML = carrinho.map((item, index) => `
         <div class="cart-item">
             <button type="button" class="btn-del-cart" onclick="removerDoCarrinho(${item.id})">&times;</button>
-            <div class="cart-item-title">${item.titulo}</div>
+            <div class="cart-item-title">${indiceParaLetra(index)}. ${item.titulo} [${item.quantidade}x]</div>
             <div class="cart-item-details">${item.detalhes}</div>
             ${item.observacao ? `<div style="font-size:11px; color:#d35400; font-style:italic;">Obs: ${item.observacao}</div>` : ''}
             <div style="display: flex; justify-content: space-between; align-items: center; margin-top: 6px;">
@@ -558,10 +591,10 @@ function atualizarResumoCheckout() {
 
     let html = '';
     let total = 0;
-    carrinho.forEach(item => {
+    carrinho.forEach((item, index) => {
         const sub = item.preco * item.quantidade;
         total += sub;
-        html += `<div>• ${item.quantidade}x ${item.titulo} (${item.detalhes})</div>`;
+        html += `<div><strong>${indiceParaLetra(index)}.</strong> ${item.titulo} <strong>[${item.quantidade}x]</strong> (${item.detalhes})</div>`;
     });
     resumo.innerHTML = html;
     totalCheckout.innerText = total.toFixed(2).replace('.', ',');
@@ -704,6 +737,9 @@ function confirmarMontarOutraPizza() {
 }
 
 async function enviarWhatsApp() {
+    // Bloqueia cliques múltiplos simultâneos
+    if (enviandoPedido) return;
+
     const nome = document.getElementById('cliNome')?.value.trim();
     const telefoneCliente = document.getElementById('cliTelefone')?.value.trim();
     const entrega = document.getElementById('cliEntrega')?.value;
@@ -742,6 +778,12 @@ async function enviarWhatsApp() {
         enderecoTexto = `${rua}${complementoExtra} - Bairro: ${bairro}`;
     }
 
+    const mensagemFrete = "Olá! Antes de prosseguirmos: O valor total exibido não inclui a taxa de entrega.\n\nPor favor, aguarde a confirmação do valor do frete que enviaremos para você pelo WhatsApp. Podemos continuar?";
+    if (!confirm(mensagemFrete)) {
+        console.log('Finalização cancelada pelo usuário.');
+        return;
+    }
+
     let pagamentoTexto = pagamento.toUpperCase();
     if (pagamento === 'dinheiro') {
         const troco = document.getElementById('cliTroco')?.value.trim();
@@ -752,23 +794,48 @@ async function enviarWhatsApp() {
 
     const totalCalculado = carrinho.reduce((acc, item) => acc + (item.preco * item.quantidade), 0);
 
+    // Formata os itens com a letra (A., B., C.) e quantidade [1x] ao final para salvar também na comanda
+    const itensFormatadosComanda = carrinho.map((item, index) => {
+        const letra = indiceParaLetra(index);
+        return {
+            ...item,
+            letra: letra,
+            tituloFormatado: `${letra}. ${item.titulo} [${item.quantidade}x]`
+        };
+    });
+
     const dadosComanda = {
         cliente: { nome, telefone: telefoneCliente, endereco: enderecoTexto },
         telefone: telefoneCliente,
         endereco: enderecoTexto,
         total: totalCalculado,
         pagamento: { metodo: pagamento, troco: document.getElementById('cliTroco')?.value.trim() || null },
-        itens: carrinho
+        itens: itensFormatadosComanda
     };
 
-    try {
-        await fetch('/api/comandas', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(dadosComanda)
-        });
-    } catch (e) {
-        console.error('Erro ao registrar comanda no servidor:', e);
+    const btnWhats = document.querySelector('#modalCheckout .btn-whatsapp');
+    enviandoPedido = true;
+    if (btnWhats) {
+        btnWhats.disabled = true;
+        btnWhats.style.opacity = '0.6';
+        btnWhats.style.cursor = 'not-allowed';
+        btnWhats.innerText = 'Registrando pedido...';
+    }
+
+    // Cria a comanda no banco SOMENTE UMA VEZ por pedido
+    if (!comandaJaCriada) {
+        try {
+            const resposta = await fetch('/api/comandas', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(dadosComanda)
+            });
+            if (resposta.ok) {
+                comandaJaCriada = true;
+            }
+        } catch (e) {
+            console.error('Erro ao registrar comanda no servidor:', e);
+        }
     }
 
     let msg = `==============================\n`;
@@ -786,8 +853,9 @@ async function enviarWhatsApp() {
     msg += `------------------------------\n`;
 
     carrinho.forEach((item, index) => {
+        const letra = indiceParaLetra(index);
         const subtotal = (item.preco * item.quantidade).toFixed(2).replace('.', ',');
-        msg += `*${index + 1}. [${item.quantidade}x] ${item.titulo}*\n`;
+        msg += `*${letra}. ${item.titulo} [${item.quantidade}x]*\n`;
         msg += `   └ ${item.detalhes}\n`;
         if (item.observacao) msg += `   └ 📝 Obs: ${item.observacao}\n`;
         msg += `   └ Subtotal: R$ ${subtotal}\n\n`;
@@ -798,14 +866,10 @@ async function enviarWhatsApp() {
     msg += `==============================`;
 
     urlWhatsAppFinal = `https://wa.me/${TELEFONE_WHATSAPP}?text=${encodeURIComponent(msg)}`;
-    
-    // Aviso de frete amigável
-    const mensagemFrete = "Olá! Antes de prosseguirmos: O valor total exibido não inclui a taxa de entrega.\n\nPor favor, aguarde a confirmação do valor do frete que enviaremos para você pelo WhatsApp. Podemos continuar?";
-    
-    if (confirm(mensagemFrete)) {
-        window.open(urlWhatsAppFinal, '_blank');
-    } else {
-        console.log('Finalização cancelada pelo usuário.');
+
+    if (btnWhats) {
+        btnWhats.innerText = 'Pedido Enviado ✓';
     }
 
+    window.open(urlWhatsAppFinal, '_blank');
 }

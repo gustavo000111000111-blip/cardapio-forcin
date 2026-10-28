@@ -60,13 +60,19 @@ function renderizarComandas(comandas) {
             itens = [];
         }
 
-        const itensHTML = Array.isArray(itens) ? itens.map(item => `
+        const itensHTML = Array.isArray(itens) ? itens.map((item, index) => {
+            const letraItem = item.letra || idParaCodigo(index + 1);
+            const nomeItem = item.titulo || item.nome || item.descricao || 'Item';
+            const qtdItem = item.quantidade || 1;
+
+            return `
             <div class="item-box" style="margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px dashed #eee;">
-                <div class="item-titulo">🍕 ${item.titulo || item.nome || item.descricao || 'Item'} x${item.quantidade || 1}</div>
+                <div class="item-titulo">${letraItem}. ${nomeItem} [${qtdItem}x]</div>
                 ${item.detalhes ? `<div class="item-sub" style="font-size:0.85em; color:#555;">Detalhes: ${item.detalhes}</div>` : ''}
                 ${item.obs || item.observacao ? `<div class="item-obs" style="font-size:0.85em; color:#c0392b;">Obs: ${item.obs || item.observacao}</div>` : ''}
             </div>
-        `).join('') : '';
+            `;
+        }).join('') : '';
 
         return `
             <div class="card-comanda" id="comanda-${comanda.id}" style="background: #fff; border-radius: 8px; width: 380px; padding: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); display: flex; flex-direction: column; gap: 15px;">
@@ -75,6 +81,7 @@ function renderizarComandas(comandas) {
                         <span>🍕 COZINHA - #${codigoLetra}</span>
                         <span class="data" style="color: #7f8c8d; font-size: 0.8em;">${dataHora}</span>
                     </h3>
+                    <div style="font-size: 0.85em; font-weight: bold; color: #c0392b; margin-bottom: 6px;">ITENS DO PEDIDO:</div>
                     <div class="itens-lista">${itensHTML}</div>
                     <button type="button" onclick="imprimirVia(${comanda.id}, 'cozinha')" style="margin-top:10px; background:#e74c3c; color:#fff; border:none; padding:6px 10px; border-radius:4px; cursor:pointer;">🖨️ Imprimir Via Cozinha</button>
                 </div>
@@ -93,7 +100,7 @@ function renderizarComandas(comandas) {
                     </div>
 
                     <div style="margin: 8px 0; background: #fff; padding: 8px; border-radius: 4px;">
-                        <div style="font-size: 0.85em; font-weight: bold; color: #2980b9; margin-bottom: 6px;">📦 ITENS:</div>
+                        <div style="font-size: 0.85em; font-weight: bold; color: #2980b9; margin-bottom: 6px;">📦 ITENS DO PEDIDO:</div>
                         <div class="itens-lista">${itensHTML}</div>
                     </div>
 
