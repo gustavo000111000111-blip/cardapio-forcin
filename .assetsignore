@@ -1,0 +1,9 @@
+.env
+*.sqlite
+*.tar.xz
+server.js
+vercel.json
+package.json
+package-lock.json
+node_modules
+api

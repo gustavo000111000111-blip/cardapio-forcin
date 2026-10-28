@@ -798,5 +798,14 @@ async function enviarWhatsApp() {
     msg += `==============================`;
 
     urlWhatsAppFinal = `https://wa.me/${TELEFONE_WHATSAPP}?text=${encodeURIComponent(msg)}`;
-    window.open(urlWhatsAppFinal, '_blank');
+    
+    // Aviso de frete amigável
+    const mensagemFrete = "Olá! Antes de prosseguirmos: O valor total exibido não inclui a taxa de entrega.\n\nPor favor, aguarde a confirmação do valor do frete que enviaremos para você pelo WhatsApp. Podemos continuar?";
+    
+    if (confirm(mensagemFrete)) {
+        window.open(urlWhatsAppFinal, '_blank');
+    } else {
+        console.log('Finalização cancelada pelo usuário.');
+    }
+
 }

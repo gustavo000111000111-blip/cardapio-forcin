@@ -3,3 +3,4 @@ node_modules/
 .env
 node-v20.11.0-linux-x64/
 public/node-v20.11.0-linux-x64/
+.env
