@@ -1,4 +1,66 @@
-import { neon } from '@neondatabase/serverless';
+// Cliente HTTP nativo para o Neon (Zero dependências externas / não precisa de npm install)
+function conectarNeon(connectionString) {
+  const urlLimpa = connectionString.trim().replace(/^['"]|['"]$/g, '');
+  const matchHost = urlLimpa.match(/@([^/:?]+)/);
+  if (!matchHost) {
+    throw new Error('Formato da DATABASE_URL inválido.');
+  }
+  const endpoint = `https://${matchHost[1]}/sql`;
+
+  return async function sql(strings, ...values) {
+    let query = strings[0];
+    for (let i = 1; i < strings.length; i++) {
+      query += `$${i}` + strings[i];
+    }
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Neon-Connection-String': urlLimpa,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, params: values }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Erro Neon (${response.status}): ${errText}`);
+    }
+
+    const data = await response.json();
+    return data.rows || [];
+  };
+}
+
+async function garantirTabelas(sql) {
+  await sql`CREATE TABLE IF NOT EXISTS produtos (
+    id SERIAL PRIMARY KEY,
+    categoria VARCHAR(50),
+    subcategoria VARCHAR(50),
+    nome VARCHAR(100),
+    descricao TEXT,
+    preco_broto DOUBLE PRECISION,
+    preco_media DOUBLE PRECISION,
+    preco_grande DOUBLE PRECISION,
+    preco_familia DOUBLE PRECISION,
+    preco_ituana DOUBLE PRECISION,
+    preco_unico DOUBLE PRECISION,
+    ordem INT DEFAULT 0
+  )`;
+
+  await sql`CREATE TABLE IF NOT EXISTS comandas (
+    id SERIAL PRIMARY KEY,
+    cliente TEXT,
+    telefone VARCHAR(20),
+    endereco TEXT,
+    total DOUBLE PRECISION,
+    frete DOUBLE PRECISION DEFAULT 0,
+    pagamento TEXT,
+    itens TEXT,
+    timestamp BIGINT,
+    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  )`;
+}
 
 export async function onRequest(context) {
   const { request, env, params } = context;
@@ -8,7 +70,6 @@ export async function onRequest(context) {
   const idOuAcao = pathParts[1]; // ':id' ou 'reordenar'
   const subAcao = pathParts[2]; // 'frete'
 
-  // Cabeçalhos CORS
   const corsHeaders = {
     'Access-Control-Allow-Origin': '*',
     'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
@@ -22,7 +83,6 @@ export async function onRequest(context) {
   const jsonResponse = (data, status = 200) =>
     Response.json(data, { status, headers: corsHeaders });
 
-  // Verificação de senha do Admin
   const verificarAdmin = () => {
     const senha = request.headers.get('x-admin-password');
     return env.ADMIN_PASSWORD && senha === env.ADMIN_PASSWORD;
@@ -33,24 +93,30 @@ export async function onRequest(context) {
       return jsonResponse({ erro: 'DATABASE_URL não configurada no painel da Cloudflare.' }, 500);
     }
 
-    const sql = neon(env.DATABASE_URL);
+    const sql = conectarNeon(env.DATABASE_URL);
 
     // ==========================================
     // ROTAS DE PRODUTOS (/api/produtos)
     // ==========================================
     if (recurso === 'produtos') {
-      // GET /api/produtos
       if (method === 'GET') {
-        const rows = await sql`SELECT * FROM produtos ORDER BY ordem ASC, id ASC`;
-        return jsonResponse(rows);
+        try {
+          const rows = await sql`SELECT * FROM produtos ORDER BY ordem ASC, id ASC`;
+          return jsonResponse(rows);
+        } catch (err) {
+          // Se a tabela ainda não existir no banco, cria automaticamente e retorna vazio
+          if (err.message.includes('does not exist')) {
+            await garantirTabelas(sql);
+            return jsonResponse([]);
+          }
+          throw err;
+        }
       }
 
-      // Todas as rotas abaixo exigem senha de Admin
       if (!verificarAdmin()) {
         return jsonResponse({ erro: 'Acesso negado.' }, 403);
       }
 
-      // POST /api/produtos
       if (method === 'POST') {
         const body = await request.json();
         const {
@@ -78,7 +144,6 @@ export async function onRequest(context) {
         return jsonResponse(rows[0]);
       }
 
-      // PUT /api/produtos/reordenar
       if (method === 'PUT' && idOuAcao === 'reordenar') {
         const body = await request.json();
         const lista = body.itens || body.ordem;
@@ -96,7 +161,6 @@ export async function onRequest(context) {
         return jsonResponse({ sucesso: true });
       }
 
-      // PUT /api/produtos/:id
       if (method === 'PUT' && idOuAcao) {
         const body = await request.json();
         const {
@@ -121,7 +185,6 @@ export async function onRequest(context) {
         return jsonResponse({ sucesso: true });
       }
 
-      // DELETE /api/produtos/:id
       if (method === 'DELETE' && idOuAcao) {
         await sql`DELETE FROM produtos WHERE id = ${idOuAcao}`;
         return jsonResponse({ sucesso: true });
@@ -132,10 +195,16 @@ export async function onRequest(context) {
     // ROTAS DE COMANDAS (/api/comandas)
     // ==========================================
     if (recurso === 'comandas') {
-      // GET /api/comandas (Já limpa comandas com mais de 90 min automaticamente)
       if (method === 'GET') {
         const limiteTempo = Date.now() - (90 * 60 * 1000);
-        await sql`DELETE FROM comandas WHERE timestamp < ${limiteTempo}`;
+        try {
+          await sql`DELETE FROM comandas WHERE timestamp < ${limiteTempo}`;
+        } catch (err) {
+          if (err.message.includes('does not exist')) {
+            await garantirTabelas(sql);
+            return jsonResponse([]);
+          }
+        }
 
         const rows = await sql`SELECT * FROM comandas ORDER BY timestamp DESC`;
         const formatadas = rows.map(c => ({
@@ -154,7 +223,6 @@ export async function onRequest(context) {
         return jsonResponse(formatadas);
       }
 
-      // POST /api/comandas
       if (method === 'POST') {
         const body = await request.json();
         const { cliente, telefone, endereco, total, itens, pagamento } = body;
@@ -179,7 +247,6 @@ export async function onRequest(context) {
         return jsonResponse({ id: rows[0].id, mensagem: 'Comanda criada com sucesso!' });
       }
 
-      // PUT /api/comandas/:id/frete
       if (method === 'PUT' && idOuAcao && subAcao === 'frete') {
         const body = await request.json();
         const valorFrete = parseFloat(body.frete) || 0;
