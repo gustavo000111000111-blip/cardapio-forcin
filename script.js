@@ -227,7 +227,7 @@ function carregarDadosSalvosCliente() {
 }
 
 function normalizarNomeFoto(nome) {
-    return nome.normalize("NFD").replace(/[\u0300-\u36f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+    return nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
 }
 
 function renderizarDestaques() {
