@@ -1,9 +1,14 @@
-// Cliente HTTP nativo para o Neon (Zero dependências externas / não precisa de npm install)
 function conectarNeon(connectionString) {
+  if (!connectionString || typeof connectionString !== 'string') {
+    throw new Error('DATABASE_URL não foi encontrada ou está vazia.');
+  }
+
+  // Limpa aspas acidentais e espaços que possam ter vindo do painel
   const urlLimpa = connectionString.trim().replace(/^['"]|['"]$/g, '');
   const matchHost = urlLimpa.match(/@([^/:?]+)/);
+
   if (!matchHost) {
-    throw new Error('Formato da DATABASE_URL inválido.');
+    throw new Error(`DATABASE_URL inválida (recebido: ${urlLimpa.substring(0, 15)}...)`);
   }
   const endpoint = `https://${matchHost[1]}/sql`;
 
